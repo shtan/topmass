@@ -10,7 +10,7 @@ namespace Mt2Calculator{
 	Calculator::Calculator() : metResM(TMatrixD(2,2))
 	{
 		neutrino_test_mass=0.0L;
-		W_test_mass=80.0L;//COME BACK AND CHANGE THIS BACK LATER
+		W_test_mass=80.4L;
 		jet1=TLorentzVector(0.0, 0.0, 0.0, 0.0);
 		jet2=TLorentzVector(0.0, 0.0, 0.0, 0.0);
 		lep1=TLorentzVector(0.0, 0.0, 0.0, 0.0);

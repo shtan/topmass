@@ -20,10 +20,16 @@ int main(int argc, char* argv[]){
       string name = it->first;
       Dataset *dat = &(it->second);
 
-      fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts, eventvec );
+      if( name.compare("data") != 0 ) continue;
 
+      fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
+            "RealData", eventvec );
+      fitter.GetVariables( eventvec );
+
+      cout << endl;
    }
 
-   cout << endl;
+   fitter.RunMinimizer( eventvec );
+
    return 0;
 }

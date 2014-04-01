@@ -35,6 +35,10 @@ struct Dataset {
 struct Event {
 
    string process;
+
+   // classify events
+   string type;
+
    int nvertices;
    double weight;
 
@@ -42,13 +46,14 @@ struct Event {
    double mt2_220;
    double mt2_210;
    double mt2_221;
-   vector<double> mbl;
+   vector<double> mbls;
 
    // reconstructed objects
    TLorentzVector jet1, jet2, lep1, lep2, met;
 
    Event(){
       process = "";
+      type = "";
 
       nvertices = 0;
       weight = 0;
@@ -63,6 +68,7 @@ struct Event {
       mt2_210 = 0;
       mt2_221 = 0;
    }
+
 };
 
 class Fitter{
@@ -71,8 +77,13 @@ class Fitter{
       Fitter();
       ~Fitter();
 
-      void ReadNtuple(string, string, double, vector<Event>&);
+      void ReadNtuple(string, string, double, string, vector<Event>&);
       void LoadDatasets(map<string, Dataset>&);
+      void GetVariables(vector<Event>&);
+
+      void RunMinimizer(vector<Event>&);
+      double Fmbl_sig(double, double);
+      TH1D *Hmbl_bkg = new TH1D("Hmbl_bkg", "mbl control sample shape", 100, 0, 250);
 
       ROOT::Minuit2::Minuit2Minimizer* gMinuit;
 
@@ -81,6 +92,8 @@ class Fitter{
       double Min2LL(const double*);
 
       ROOT::Math::IMultiGenFunction* fFunc;
+
+      vector<Event>* eventvec_fit;
 
 };
 

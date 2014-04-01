@@ -1,4 +1,5 @@
 #include "TopMass.h"
+#include "Mt2Calculator.h"
 
 #include "TH1.h"
 #include "TH2.h"
@@ -36,6 +37,8 @@ Fitter::Fitter(){
 
    // compute weighted errors
    TH1::SetDefaultSumw2();
+
+   Hmbl_bkg = new TH1D("Hmbl_bkg", "mbl control sample shape", 100, 0, 250);
   
 }
 
@@ -107,8 +110,9 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 
 }
 
-void Fitter::ReadNtuple( string path, string process, double mcweight, vector<Event>& eventvec ){
-   cout << "---> " << process << endl;
+void Fitter::ReadNtuple( string path, string process, double mcweight, 
+      string selection, vector<Event>& eventvec ){
+   cout << "... " << process << endl;
    
    // declare variables
    TLorentzVector *jet1 = new TLorentzVector();
@@ -125,7 +129,7 @@ void Fitter::ReadNtuple( string path, string process, double mcweight, vector<Ev
 
    // open ntuple
    TFile file( path.c_str() );
-   TTree *tree = (TTree*)file.Get("RealData");
+   TTree *tree = (TTree*)file.Get(selection.c_str());
 
    tree->SetBranchAddress("jet1FourVector", &jet1);
    tree->SetBranchAddress("jet2FourVector", &jet2);
@@ -174,6 +178,42 @@ void Fitter::ReadNtuple( string path, string process, double mcweight, vector<Ev
 
       evtemp.met = *met;
 
+      // classify events
+      if( process.compare("data") == 0 ){
+         evtemp.type = "data";
+      }
+      // physics backgrounds
+      else if( process.find("ttbar") == string::npos ){
+         evtemp.type = "other";
+      }
+      // hadronic decays
+      else if( fabs(lpPdgIdGEN) < 5 or fabs(lmPdgIdGEN) < 5
+            or fabs(nPdgIdGEN) < 5 or fabs(nbPdgIdGEN) < 5 ){
+         evtemp.type = "ttbar_hadronic";
+      }
+      // tau decays
+      else if( fabs(lpPdgIdGEN) == 15 or fabs(lmPdgIdGEN) == 15
+            or fabs(nPdgIdGEN) == 15 or fabs(nbPdgIdGEN) == 15 ){
+         evtemp.type = "ttbar_taus";
+      }
+      // mistag bkg
+      else if( fabs(jet1GenId) != 5 or fabs(jet2GenId) != 5 ){
+         evtemp.type = "ttbar_mistag";
+      }
+      // signal ttbar
+      else if( (lpPdgIdGEN == -11 or lpPdgIdGEN == -13)
+            and (lmPdgIdGEN == 11 or lmPdgIdGEN == 13)
+            and (nPdgIdGEN == 12 or nPdgIdGEN == 14)
+            and (nbPdgIdGEN == -12 or nbPdgIdGEN == -14)
+            and (fabs(jet1GenId) == 5 and fabs(jet2GenId) == 5) ){
+         evtemp.type = "ttbar_signal";
+      }
+      // check for unclassified events
+      else{
+         cout << "ERROR IN TTBAR EVENT CLASSIFICATION" << endl;
+         break;
+      }
+
       // push back event
       eventvec.push_back( evtemp );
 
@@ -182,5 +222,84 @@ void Fitter::ReadNtuple( string path, string process, double mcweight, vector<Ev
    return;
 }
 
+
+void Fitter::GetVariables( vector<Event>& eventvec ){
+
+   Mt2Calculator::Calculator Calc;
+   for( vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
+
+      Calc.SetParticles( ev->jet1, ev->jet2, ev->lep1, ev->lep2, ev->met );
+
+      ev->mt2_221 = Calc.GetMt2(2,1);
+      ev->mt2_220 = Calc.GetMt2(2,0);
+      ev->mt2_210 = Calc.GetMt2(1,0);
+      ev->mbls = Calc.GetBlInvariantMasses();
+
+   }
+
+}
+
+
+void Fitter::RunMinimizer( vector<Event>& eventvec ){
+
+   gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
+   gMinuit->SetTolerance(0.001);
+   gMinuit->SetPrintLevel(2);
+
+   fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 1 );
+   gMinuit->SetFunction( *fFunc );
+   gMinuit->SetVariable(0, "topMass", 170, 0.01);
+
+   // set event vector and minimize
+   eventvec_fit = &eventvec;
+   gMinuit->Minimize();
+   gMinuit->Hesse();
+
+}
+
+double Fitter::Min2LL(const double *x){
+
+   // evaluate likelihood
+   double m2ll = 0;
+   for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++){
+      for( int i=0; i < ev->mbls.size(); i++ ){
+
+         double lmbl_sig = Fmbl_sig(ev->mbls[i], x[0]);
+         if( lmbl_sig > 0 ){
+            m2ll -= 2*ev->weight*log(lmbl_sig);
+         }
+
+      }
+   }
+
+   return m2ll;
+}
+
+double Fitter::Fmbl_sig(double x, double mt){
+
+   //TF1 *fl = new TF1("fl","gaus(0)+exp(-[3]*x)*pol5(4)",0,250);
+
+   double par [10];
+   par[0] = -1374.0 + mt*0.0;
+   par[1] = -7.34 + mt*0.9151;
+   par[2] = 8.912 + mt*0.1054;
+   par[3] = 0.08817 + mt*-0.0003919;
+   par[4] = -810.9 + mt*4.788;
+   par[5] = 280.9 + mt*-1.612;
+   par[6] = -32.05 + mt*0.177;
+   par[7] = 1.383 + mt*-0.007317;
+   par[8] = -0.01049 + mt*5.532E-05;
+   par[9] = 2.203E-05 + mt*-1.164E-07;
+
+   double gaus = par[0]*exp( -0.5*pow((x-par[1])/par[2],2) );
+   double expo = exp(-par[3]*x);
+   double pol5 = par[4] + par[5]*x + par[6]*pow(x,2) + par[7]*pow(x,3) + par[8]*pow(x,4)
+      + par[9]*pow(x,5);
+
+   double out = gaus + expo*pol5;
+
+   return out;
+
+}
 
 

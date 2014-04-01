@@ -1,0 +1,186 @@
+#include "TopMass.h"
+
+#include "TH1.h"
+#include "TH2.h"
+#include "TF1.h"
+#include "TMath.h"
+#include "TTree.h"
+#include "TFile.h"
+#include "TCanvas.h"
+#include "TROOT.h"
+#include "TStyle.h"
+#include "TRandom3.h"
+
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+
+#include "Math/Functor.h"
+#include "Minuit2/Minuit2Minimizer.h"
+
+#include "Math/GSLRndmEngines.h"
+#include "Math/Random.h"
+
+using namespace std;
+
+
+//
+// constructor and destructor
+//
+
+Fitter::Fitter(){
+
+   // MINUIT variables
+   gMinuit = 0;
+   fFunc = 0;
+
+   // compute weighted errors
+   TH1::SetDefaultSumw2();
+  
+}
+
+Fitter::~Fitter(){
+      if (gMinuit) delete gMinuit;
+      if (fFunc) delete fFunc;
+}
+
+
+//
+// member definitions
+//
+
+void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
+
+   // file path
+   string path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140322/";
+
+   // filenames
+   datasets[ "data" ] =             Dataset( path, "ntuple_data.root" );
+   datasets[ "ttbar" ] =            Dataset( path, "ntuple_TTJets.root" );
+   datasets[ "t_tw" ] =             Dataset( path, "ntuple_T_tW.root" );
+   datasets[ "tbar_tw" ] =          Dataset( path, "ntuple_Tbar_tW.root" );
+   datasets[ "dy" ] =               Dataset( path, "ntuple_DYJetsToLL.root" );
+   datasets[ "wjets" ] =            Dataset( path, "ntuple_WJetsToLNu.root" );
+   datasets[ "ww" ] =               Dataset( path, "ntuple_WW.root" );
+   datasets[ "wz" ] =               Dataset( path, "ntuple_WZ.root" );
+   datasets[ "zz" ] =               Dataset( path, "ntuple_ZZ.root" );
+   datasets[ "ttbar_mass161" ] =    Dataset( path, "ntuple_TTJets_mass161_5.root" ); 
+   datasets[ "ttbar_mass163" ] =    Dataset( path, "ntuple_TTJets_mass163_5.root" ); 
+   datasets[ "ttbar_mass166" ] =    Dataset( path, "ntuple_TTJets_mass166_5.root" ); 
+   datasets[ "ttbar_mass169" ] =    Dataset( path, "ntuple_TTJets_mass169_5.root" ); 
+   datasets[ "ttbar_mass175" ] =    Dataset( path, "ntuple_TTJets_mass175_5.root" ); 
+   datasets[ "ttbar_mass178" ] =    Dataset( path, "ntuple_TTJets_mass178_5.root" ); 
+   datasets[ "ttbar_mass181" ] =    Dataset( path, "ntuple_TTJets_mass181_5.root" ); 
+
+   // for mc weights
+   datasets[ "dy" ].mc_nevts              = 30459503;
+   datasets[ "ttbar" ].mc_nevts           = 6923750;
+   datasets[ "ww" ].mc_nevts              = 10000431;
+   datasets[ "wz" ].mc_nevts              = 10000283;
+   datasets[ "zz" ].mc_nevts              = 9799908;
+   datasets[ "tbar_tw" ].mc_nevts         = 493460;
+   datasets[ "t_tw" ].mc_nevts            = 497658;
+   datasets[ "wjets" ].mc_nevts           = 57709905;
+   datasets[ "ttbar_mass161" ].mc_nevts   = 6923750;
+   datasets[ "ttbar_mass163" ].mc_nevts   = 6923750;
+   datasets[ "ttbar_mass166" ].mc_nevts   = 6923750;
+   datasets[ "ttbar_mass169" ].mc_nevts   = 6923750;
+   datasets[ "ttbar_mass175" ].mc_nevts   = 6923750;
+   datasets[ "ttbar_mass178" ].mc_nevts   = 6923750;
+   datasets[ "ttbar_mass181" ].mc_nevts   = 6923750;
+
+   datasets[ "dy" ].mc_xsec               = 3351.97;
+   datasets[ "ttbar" ].mc_xsec            = 234;
+   datasets[ "ww" ].mc_xsec               = 54.838;
+   datasets[ "wz" ].mc_xsec               = 33.21;
+   datasets[ "zz" ].mc_xsec               = 8.059;
+   datasets[ "tbar_tw" ].mc_xsec          = 11.1;
+   datasets[ "t_tw" ].mc_xsec             = 11.1;
+   datasets[ "wjets" ].mc_xsec            = 37509.0;
+   datasets[ "ttbar_mass161" ].mc_xsec    = 234;
+   datasets[ "ttbar_mass163" ].mc_xsec    = 234;
+   datasets[ "ttbar_mass166" ].mc_xsec    = 234;
+   datasets[ "ttbar_mass169" ].mc_xsec    = 234;
+   datasets[ "ttbar_mass175" ].mc_xsec    = 234;
+   datasets[ "ttbar_mass178" ].mc_xsec    = 234;
+   datasets[ "ttbar_mass181" ].mc_xsec    = 234;
+
+}
+
+void Fitter::ReadNtuple( string path, string process, double mcweight, vector<Event>& eventvec ){
+   cout << "---> " << process << endl;
+   
+   // declare variables
+   TLorentzVector *jet1 = new TLorentzVector();
+   TLorentzVector *jet2 = new TLorentzVector();
+   TLorentzVector *lep1 = new TLorentzVector();
+   TLorentzVector *lep2 = new TLorentzVector();
+   TLorentzVector *met = new TLorentzVector();
+
+   int nvert;
+   double jet1PtRes, jet1PhiRes, jet1EtaRes, jet2PtRes, jet2PhiRes, jet2EtaRes;
+   int lpPdgIdGEN, lmPdgIdGEN, nPdgIdGEN, nbPdgIdGEN;
+   int jet1GenId, jet2GenId;
+   float puMyWeight = 1.0;
+
+   // open ntuple
+   TFile file( path.c_str() );
+   TTree *tree = (TTree*)file.Get("RealData");
+
+   tree->SetBranchAddress("jet1FourVector", &jet1);
+   tree->SetBranchAddress("jet2FourVector", &jet2);
+   tree->SetBranchAddress("lepton1FourVector", &lep1);
+   tree->SetBranchAddress("lepton2FourVector", &lep2);
+   tree->SetBranchAddress("metFourVector", &met);
+   tree->SetBranchAddress("jet1PtResolution", &jet1PtRes);
+   tree->SetBranchAddress("jet1PhiResolution", &jet1PhiRes);
+   tree->SetBranchAddress("jet1EtaResolution", &jet1EtaRes);
+   tree->SetBranchAddress("jet2PtResolution", &jet2PtRes);
+   tree->SetBranchAddress("jet2PhiResolution", &jet2PhiRes);
+   tree->SetBranchAddress("jet2EtaResolution", &jet2EtaRes);
+   tree->SetBranchAddress("vertices", &nvert);
+
+   if( process.find("ttbar") != string::npos ){
+      tree->SetBranchAddress("lpPdgIdGEN", &lpPdgIdGEN);
+      tree->SetBranchAddress("lmPdgIdGEN", &lmPdgIdGEN);
+      tree->SetBranchAddress("nPdgIdGEN", &nPdgIdGEN);
+      tree->SetBranchAddress("nbPdgIdGEN", &nbPdgIdGEN);
+      tree->SetBranchAddress("jet1GenId", &jet1GenId);
+      tree->SetBranchAddress("jet2GenId", &jet2GenId);
+   }
+
+   if( !(process.find("data") != string::npos) ){
+      tree->SetBranchAddress("puMyWeight", &puMyWeight);
+   }
+
+   // fill event vector
+   for( int ev=0; ev < tree->GetEntries(); ev++ ){
+
+      tree->GetEntry(ev);
+
+      Event evtemp;
+
+      // global quantities
+      evtemp.process = process;
+      evtemp.weight = mcweight * puMyWeight;
+      evtemp.nvertices = nvert;
+
+      // jets, leptons, met
+      evtemp.jet1 = *jet1;
+      evtemp.jet2 = *jet2;
+
+      evtemp.lep1 = *lep1;
+      evtemp.lep2 = *lep2;
+
+      evtemp.met = *met;
+
+      // push back event
+      eventvec.push_back( evtemp );
+
+   }
+
+   return;
+}
+
+
+

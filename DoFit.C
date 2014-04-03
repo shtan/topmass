@@ -20,16 +20,26 @@ int main(int argc, char* argv[]){
       string name = it->first;
       Dataset *dat = &(it->second);
 
-      if( name.compare("data") != 0 ) continue;
+      //if( name.compare("data") != 0 ) continue;
 
       fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
             "RealData", eventvec );
-      fitter.GetVariables( eventvec );
+      if( name.compare("data") == 0 ){ // bkg control sample
+         fitter.ReadNtuple( dat->path+dat->file, name+"_bkgcontrol", dat->mc_xsec/dat->mc_nevts,
+               "buBkg", eventvec );
+      }
 
-      cout << endl;
    }
 
-   fitter.RunMinimizer( eventvec );
+   fitter.GetVariables( eventvec );
+   cout << endl;
+
+   fitter.DeclareHists();
+   fitter.FillHists( eventvec );
+   fitter.PrintHists();
+   //fitter.RunMinimizer( eventvec );
+
+   fitter.PlotTemplates();
 
    return 0;
 }

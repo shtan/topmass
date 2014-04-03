@@ -7,7 +7,7 @@ LDLIBS =  $(shell root-config --glibs) -lMinuit2 -lMathMore
 
 VPATH = inc:src:obj
 
-OBJECTS = obj/TopMass.o obj/Mt2Calculator.o
+OBJECTS = obj/TopMass.o obj/Mt2Calculator.o obj/Diagnostics.o
 
 COMPILE = $(CXX) $(CXXFLAGS) $(CPPFLAGS) -c
 LINK = $(LD) $(LDFLAGS)
@@ -29,6 +29,9 @@ obj/TopMass.o : TopMass.C TopMass.h Mt2Calculator.h
 
 obj/Mt2Calculator.o : Mt2Calculator.C Mt2Calculator.h
 	$(COMPILE) src/Mt2Calculator.C -o obj/Mt2Calculator.o
+
+obj/Diagnostics.o : Diagnostics.C TopMass.h
+	$(COMPILE) src/Diagnostics.C -o obj/Diagnostics.o
 
 .PHONY : clean
 

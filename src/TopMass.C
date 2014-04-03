@@ -58,55 +58,55 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
    string path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140322/";
 
    // filenames
-   datasets[ "data" ] =             Dataset( path, "ntuple_data.root" );
-   datasets[ "ttbar" ] =            Dataset( path, "ntuple_TTJets.root" );
-   datasets[ "t_tw" ] =             Dataset( path, "ntuple_T_tW.root" );
-   datasets[ "tbar_tw" ] =          Dataset( path, "ntuple_Tbar_tW.root" );
-   datasets[ "dy" ] =               Dataset( path, "ntuple_DYJetsToLL.root" );
-   datasets[ "wjets" ] =            Dataset( path, "ntuple_WJetsToLNu.root" );
-   datasets[ "ww" ] =               Dataset( path, "ntuple_WW.root" );
-   datasets[ "wz" ] =               Dataset( path, "ntuple_WZ.root" );
-   datasets[ "zz" ] =               Dataset( path, "ntuple_ZZ.root" );
-   datasets[ "ttbar_mass161" ] =    Dataset( path, "ntuple_TTJets_mass161_5.root" ); 
-   datasets[ "ttbar_mass163" ] =    Dataset( path, "ntuple_TTJets_mass163_5.root" ); 
-   datasets[ "ttbar_mass166" ] =    Dataset( path, "ntuple_TTJets_mass166_5.root" ); 
-   datasets[ "ttbar_mass169" ] =    Dataset( path, "ntuple_TTJets_mass169_5.root" ); 
-   datasets[ "ttbar_mass175" ] =    Dataset( path, "ntuple_TTJets_mass175_5.root" ); 
-   datasets[ "ttbar_mass178" ] =    Dataset( path, "ntuple_TTJets_mass178_5.root" ); 
-   datasets[ "ttbar_mass181" ] =    Dataset( path, "ntuple_TTJets_mass181_5.root" ); 
+   datasets[ "data" ]      = Dataset( path, "ntuple_data.root" );
+   datasets[ "t_tw" ]      = Dataset( path, "ntuple_T_tW.root" );
+   datasets[ "tbar_tw" ]   = Dataset( path, "ntuple_Tbar_tW.root" );
+   datasets[ "dy" ]        = Dataset( path, "ntuple_DYJetsToLL.root" );
+   datasets[ "wjets" ]     = Dataset( path, "ntuple_WJetsToLNu.root" );
+   datasets[ "ww" ]        = Dataset( path, "ntuple_WW.root" );
+   datasets[ "wz" ]        = Dataset( path, "ntuple_WZ.root" );
+   datasets[ "zz" ]        = Dataset( path, "ntuple_ZZ.root" );
+   datasets[ "ttbar161" ]  = Dataset( path, "ntuple_TTJets_mass161_5.root" ); 
+   datasets[ "ttbar163" ]  = Dataset( path, "ntuple_TTJets_mass163_5.root" ); 
+   datasets[ "ttbar166" ]  = Dataset( path, "ntuple_TTJets_mass166_5.root" ); 
+   datasets[ "ttbar169" ]  = Dataset( path, "ntuple_TTJets_mass169_5.root" ); 
+   datasets[ "ttbar172" ]  = Dataset( path, "ntuple_TTJets.root" );
+   datasets[ "ttbar175" ]  = Dataset( path, "ntuple_TTJets_mass175_5.root" ); 
+   datasets[ "ttbar178" ]  = Dataset( path, "ntuple_TTJets_mass178_5.root" ); 
+   datasets[ "ttbar181" ]  = Dataset( path, "ntuple_TTJets_mass181_5.root" ); 
 
    // for mc weights
-   datasets[ "dy" ].mc_nevts              = 30459503;
-   datasets[ "ttbar" ].mc_nevts           = 6923750;
-   datasets[ "ww" ].mc_nevts              = 10000431;
-   datasets[ "wz" ].mc_nevts              = 10000283;
-   datasets[ "zz" ].mc_nevts              = 9799908;
-   datasets[ "tbar_tw" ].mc_nevts         = 493460;
-   datasets[ "t_tw" ].mc_nevts            = 497658;
-   datasets[ "wjets" ].mc_nevts           = 57709905;
-   datasets[ "ttbar_mass161" ].mc_nevts   = 6923750;
-   datasets[ "ttbar_mass163" ].mc_nevts   = 6923750;
-   datasets[ "ttbar_mass166" ].mc_nevts   = 6923750;
-   datasets[ "ttbar_mass169" ].mc_nevts   = 6923750;
-   datasets[ "ttbar_mass175" ].mc_nevts   = 6923750;
-   datasets[ "ttbar_mass178" ].mc_nevts   = 6923750;
-   datasets[ "ttbar_mass181" ].mc_nevts   = 6923750;
+   datasets[ "dy" ].mc_nevts         = 30459503;
+   datasets[ "ww" ].mc_nevts         = 10000431;
+   datasets[ "wz" ].mc_nevts         = 10000283;
+   datasets[ "zz" ].mc_nevts         = 9799908;
+   datasets[ "tbar_tw" ].mc_nevts    = 493460;
+   datasets[ "t_tw" ].mc_nevts       = 497658;
+   datasets[ "wjets" ].mc_nevts      = 57709905;
+   datasets[ "ttbar161" ].mc_nevts   = 6923750;
+   datasets[ "ttbar163" ].mc_nevts   = 6923750;
+   datasets[ "ttbar166" ].mc_nevts   = 6923750;
+   datasets[ "ttbar169" ].mc_nevts   = 6923750;
+   datasets[ "ttbar172" ].mc_nevts   = 6923750;
+   datasets[ "ttbar175" ].mc_nevts   = 6923750;
+   datasets[ "ttbar178" ].mc_nevts   = 6923750;
+   datasets[ "ttbar181" ].mc_nevts   = 6923750;
 
-   datasets[ "dy" ].mc_xsec               = 3351.97;
-   datasets[ "ttbar" ].mc_xsec            = 234;
-   datasets[ "ww" ].mc_xsec               = 54.838;
-   datasets[ "wz" ].mc_xsec               = 33.21;
-   datasets[ "zz" ].mc_xsec               = 8.059;
-   datasets[ "tbar_tw" ].mc_xsec          = 11.1;
-   datasets[ "t_tw" ].mc_xsec             = 11.1;
-   datasets[ "wjets" ].mc_xsec            = 37509.0;
-   datasets[ "ttbar_mass161" ].mc_xsec    = 234;
-   datasets[ "ttbar_mass163" ].mc_xsec    = 234;
-   datasets[ "ttbar_mass166" ].mc_xsec    = 234;
-   datasets[ "ttbar_mass169" ].mc_xsec    = 234;
-   datasets[ "ttbar_mass175" ].mc_xsec    = 234;
-   datasets[ "ttbar_mass178" ].mc_xsec    = 234;
-   datasets[ "ttbar_mass181" ].mc_xsec    = 234;
+   datasets[ "dy" ].mc_xsec          = 3351.97;
+   datasets[ "ww" ].mc_xsec          = 54.838;
+   datasets[ "wz" ].mc_xsec          = 33.21;
+   datasets[ "zz" ].mc_xsec          = 8.059;
+   datasets[ "tbar_tw" ].mc_xsec     = 11.1;
+   datasets[ "t_tw" ].mc_xsec        = 11.1;
+   datasets[ "wjets" ].mc_xsec       = 37509.0;
+   datasets[ "ttbar161" ].mc_xsec    = 234;
+   datasets[ "ttbar163" ].mc_xsec    = 234;
+   datasets[ "ttbar166" ].mc_xsec    = 234;
+   datasets[ "ttbar169" ].mc_xsec    = 234;
+   datasets[ "ttbar172" ].mc_xsec    = 234;
+   datasets[ "ttbar175" ].mc_xsec    = 234;
+   datasets[ "ttbar178" ].mc_xsec    = 234;
+   datasets[ "ttbar181" ].mc_xsec    = 234;
 
 }
 
@@ -178,9 +178,11 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
 
       evtemp.met = *met;
 
+      //
       // classify events
-      if( process.compare("data") == 0 ){
-         evtemp.type = "data";
+      // 
+      if( process.find("data") != string::npos ){
+         evtemp.type = process;
       }
       // physics backgrounds
       else if( process.find("ttbar") == string::npos ){
@@ -189,16 +191,16 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       // hadronic decays
       else if( fabs(lpPdgIdGEN) < 5 or fabs(lmPdgIdGEN) < 5
             or fabs(nPdgIdGEN) < 5 or fabs(nbPdgIdGEN) < 5 ){
-         evtemp.type = "ttbar_hadronic";
+         evtemp.type = process+"_hadronic";
       }
       // tau decays
       else if( fabs(lpPdgIdGEN) == 15 or fabs(lmPdgIdGEN) == 15
             or fabs(nPdgIdGEN) == 15 or fabs(nbPdgIdGEN) == 15 ){
-         evtemp.type = "ttbar_taus";
+         evtemp.type = process+"_taus";
       }
       // mistag bkg
       else if( fabs(jet1GenId) != 5 or fabs(jet2GenId) != 5 ){
-         evtemp.type = "ttbar_mistag";
+         evtemp.type = process+"_mistag";
       }
       // signal ttbar
       else if( (lpPdgIdGEN == -11 or lpPdgIdGEN == -13)
@@ -206,7 +208,7 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
             and (nPdgIdGEN == 12 or nPdgIdGEN == 14)
             and (nbPdgIdGEN == -12 or nbPdgIdGEN == -14)
             and (fabs(jet1GenId) == 5 and fabs(jet2GenId) == 5) ){
-         evtemp.type = "ttbar_signal";
+         evtemp.type = process+"_signal";
       }
       // check for unclassified events
       else{
@@ -242,13 +244,27 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
 
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
+   // temporary -- compute mbl bkg template
+   map<string, Dataset> datasets;
+   vector<Event> eventvec_bkg;
+   LoadDatasets( datasets );
+   ReadNtuple( datasets["data"].path+datasets["data"].file, "data", 1.0, "buBkg", eventvec_bkg );
+   GetVariables( eventvec_bkg );
+   for( vector<Event>::iterator ev = eventvec_bkg.begin(); ev < eventvec_bkg.end(); ev++){
+      for( int i=0; i < ev->mbls.size(); i++ ){
+         Hmbl_bkg->Fill( ev->mbls[i] );
+      }
+   }
+   Hmbl_bkg->Scale( 1.0/Hmbl_bkg->Integral("width") );
+
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
    gMinuit->SetTolerance(0.001);
-   gMinuit->SetPrintLevel(2);
+   gMinuit->SetPrintLevel(3);
 
-   fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 1 );
+   fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
    gMinuit->SetFunction( *fFunc );
-   gMinuit->SetVariable(0, "topMass", 170, 0.01);
+   gMinuit->SetVariable(0, "topMass", 175, 0.01);
+   gMinuit->SetLimitedVariable(1, "norm", 0.50, 0.01, 0, 1.0);
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
@@ -259,14 +275,29 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
 double Fitter::Min2LL(const double *x){
 
+   TF1 *fl = new TF1("fl","gaus(0)+exp(-[3]*x)*pol5(4)",0,250);
+   fl->SetParameter( 0, -1374.0 + x[0]*0.0 );
+   fl->SetParameter( 1, -7.34 + x[0]*0.9151 );
+   fl->SetParameter( 2, 8.912 + x[0]*0.1054 );
+   fl->SetParameter( 3, 0.08817 + x[0]*-0.0003919 );
+   fl->SetParameter( 4, -810.9 + x[0]*4.788 );
+   fl->SetParameter( 5, 280.9 + x[0]*-1.612 );
+   fl->SetParameter( 6, -32.05 + x[0]*0.177 );
+   fl->SetParameter( 7, 1.383 + x[0]*-0.007317 );
+   fl->SetParameter( 8, -0.01049 + x[0]*5.532E-05 );
+   fl->SetParameter( 9, 2.203E-05 + x[0]*-1.164E-07 );
+   double integral = fl->Integral(0,250);
+   delete fl;
+
    // evaluate likelihood
    double m2ll = 0;
    for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++){
       for( int i=0; i < ev->mbls.size(); i++ ){
 
-         double lmbl_sig = Fmbl_sig(ev->mbls[i], x[0]);
-         if( lmbl_sig > 0 ){
-            m2ll -= 2*ev->weight*log(lmbl_sig);
+         double mt = x[0];
+         double lmbl_sig = Fmbl_sig(&(ev->mbls[i]), &mt);
+         if( lmbl_sig > 0 and ev->mbls[i]<250 ){
+            m2ll -= 2*ev->weight*log( x[1]*lmbl_sig/integral + (1-x[1])*Hmbl_bkg->GetBinContent(Hmbl_bkg->FindBin(ev->mbls[i])) );
          }
 
       }
@@ -275,9 +306,11 @@ double Fitter::Min2LL(const double *x){
    return m2ll;
 }
 
-double Fitter::Fmbl_sig(double x, double mt){
-
+double Fitter::Fmbl_sig(double *px, double *pp){
    //TF1 *fl = new TF1("fl","gaus(0)+exp(-[3]*x)*pol5(4)",0,250);
+
+   double x = px[0];
+   double mt = pp[0];
 
    double par [10];
    par[0] = -1374.0 + mt*0.0;

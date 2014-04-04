@@ -20,8 +20,6 @@ int main(int argc, char* argv[]){
       string name = it->first;
       Dataset *dat = &(it->second);
 
-      //if( name.compare("data") != 0 ) continue;
-
       fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
             "RealData", eventvec );
       if( name.compare("data") == 0 ){ // bkg control sample
@@ -36,10 +34,11 @@ int main(int argc, char* argv[]){
 
    fitter.DeclareHists();
    fitter.FillHists( eventvec );
-   fitter.PrintHists();
-   //fitter.RunMinimizer( eventvec );
+   //fitter.PrintHists();
 
-   fitter.PlotTemplates();
+   fitter.RunMinimizer( eventvec );
+
+   //fitter.PlotTemplates();
 
    return 0;
 }

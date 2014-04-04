@@ -1,4 +1,5 @@
 #include "TopMass.h"
+#include "Shapes.h"
 #include "Mt2Calculator.h"
 
 #include "TH1.h"
@@ -38,8 +39,11 @@ Fitter::Fitter(){
    // compute weighted errors
    TH1::SetDefaultSumw2();
 
-   Hmbl_bkg = new TH1D("Hmbl_bkg", "mbl control sample shape", 100, 0, 250);
-  
+   // plot formatting
+   gROOT->ProcessLineSync(".L scripts/tdrstyle.C");
+   gROOT->ProcessLineSync("setTDRStyle()");
+
+
 }
 
 Fitter::~Fitter(){
@@ -244,94 +248,81 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
 
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
-   // temporary -- compute mbl bkg template
-   map<string, Dataset> datasets;
-   vector<Event> eventvec_bkg;
-   LoadDatasets( datasets );
-   ReadNtuple( datasets["data"].path+datasets["data"].file, "data", 1.0, "buBkg", eventvec_bkg );
-   GetVariables( eventvec_bkg );
-   for( vector<Event>::iterator ev = eventvec_bkg.begin(); ev < eventvec_bkg.end(); ev++){
-      for( int i=0; i < ev->mbls.size(); i++ ){
-         Hmbl_bkg->Fill( ev->mbls[i] );
-      }
-   }
-   Hmbl_bkg->Scale( 1.0/Hmbl_bkg->Integral("width") );
-
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
    gMinuit->SetTolerance(0.001);
    gMinuit->SetPrintLevel(3);
 
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
    gMinuit->SetFunction( *fFunc );
-   gMinuit->SetVariable(0, "topMass", 175, 0.01);
-   gMinuit->SetLimitedVariable(1, "norm", 0.50, 0.01, 0, 1.0);
+   gMinuit->SetVariable(0, "topMass", 173.0, 0.01);
+   gMinuit->SetLimitedVariable(1, "norm", 0.5, 0.01, 0, 1.0);
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
    gMinuit->Minimize();
    gMinuit->Hesse();
 
+   const double *xmin = gMinuit->X();
+
+   // plot fit results
+   TFile *fileout = new TFile( "results/plotsFitResults.root", "RECREATE" );
+   fileout->cd();
+   
+   TCanvas *cfit_mbl = new TCanvas("cfit_mbl","cfit_mbl",800,800);
+   cfit_mbl->cd();
+
+   hists_["mbl_r1000"]["data"]->Draw();
+
+   TH1D *hbkg = (TH1D*)hists_["mbl_r1000"]["ttbar172_mistag"]->Clone("hbkg2");
+   hbkg->Add( hists_["mbl_r1000"]["ttbar172_taus"] );
+   hbkg->Add( hists_["mbl_r1000"]["ttbar172_hadronic"] );
+   hbkg->Add( hists_["mbl_r1000"]["other"] );
+   Shapes * fptr = new Shapes( hists_["mbl_r1000"]["data_bkgcontrol"] );
+   //Shapes * fptr = new Shapes( hists_["mbl_r1000"]["ttbar172_mistag"] );
+   //Shapes * fptr = new Shapes( hbkg );
+   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
+   // evaluate integral
+   fmbl_tot->SetParameters( xmin[0], 1.0, 1.0, 1.0 );
+   double integral = fmbl_tot->Integral(0,1000);
+   fmbl_tot->SetParameters( xmin[0], xmin[1], hists_["mbl_r1000"]["data"]->Integral("width"), integral );
+   fmbl_tot->DrawCopy("same");
+
+   cfit_mbl->Write();
+
+   fileout->Close();
+
 }
 
 double Fitter::Min2LL(const double *x){
 
-   TF1 *fl = new TF1("fl","gaus(0)+exp(-[3]*x)*pol5(4)",0,250);
-   fl->SetParameter( 0, -1374.0 + x[0]*0.0 );
-   fl->SetParameter( 1, -7.34 + x[0]*0.9151 );
-   fl->SetParameter( 2, 8.912 + x[0]*0.1054 );
-   fl->SetParameter( 3, 0.08817 + x[0]*-0.0003919 );
-   fl->SetParameter( 4, -810.9 + x[0]*4.788 );
-   fl->SetParameter( 5, 280.9 + x[0]*-1.612 );
-   fl->SetParameter( 6, -32.05 + x[0]*0.177 );
-   fl->SetParameter( 7, 1.383 + x[0]*-0.007317 );
-   fl->SetParameter( 8, -0.01049 + x[0]*5.532E-05 );
-   fl->SetParameter( 9, 2.203E-05 + x[0]*-1.164E-07 );
-   double integral = fl->Integral(0,250);
-   delete fl;
+   // temp -- evaluate integral
+   Shapes * fptr = new Shapes( hists_["mbl_r1000"]["data_bkgcontrol"] );
+   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
+   fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0 );
+   double integral = fmbl_tot->Integral(0,1000);
+   delete fmbl_tot;
+   delete fptr;
 
+   TH1D *hbkg = (TH1D*)hists_["mbl_r1000"]["ttbar172_mistag"]->Clone("hbkg");
+   hbkg->Add( hists_["mbl_r1000"]["ttbar172_taus"] );
+   hbkg->Add( hists_["mbl_r1000"]["ttbar172_hadronic"] );
+   hbkg->Add( hists_["mbl_r1000"]["other"] );
+   Shapes shape( hists_["mbl_r1000"]["data_bkgcontrol"] );
+   //Shapes shape( hists_["mbl"]["ttbar172_mistag"] );
+   //Shapes shape( hbkg );
    // evaluate likelihood
+   double pmbl [] = {x[0], x[1], 1.0, integral};
    double m2ll = 0;
    for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++){
-      for( int i=0; i < ev->mbls.size(); i++ ){
+      if( ev->process.compare("data") != 0 ) continue;
+      for( unsigned int i=0; i < ev->mbls.size(); i++ ){
 
-         double lmbl_sig = Fmbl_sig(&(ev->mbls[i]), &(x[0]));
-         if( lmbl_sig > 0 and ev->mbls[i]<250 ){
-            m2ll -= 2*ev->weight*log( x[1]*lmbl_sig/integral + (1-x[1])*Hmbl_bkg->GetBinContent(Hmbl_bkg->FindBin(ev->mbls[i])) );
-         }
+         double Lmbl = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
+         m2ll -= 1.0*ev->weight*log( Lmbl );
 
       }
    }
 
    return m2ll;
 }
-
-double Fitter::Fmbl_sig(double *px, double *pp){
-   //TF1 *fl = new TF1("fl","gaus(0)+exp(-[3]*x)*pol5(4)",0,250);
-
-   double x = px[0];
-   double mt = pp[0];
-
-   double par [10];
-   par[0] = -1374.0 + mt*0.0;
-   par[1] = -7.34 + mt*0.9151;
-   par[2] = 8.912 + mt*0.1054;
-   par[3] = 0.08817 + mt*-0.0003919;
-   par[4] = -810.9 + mt*4.788;
-   par[5] = 280.9 + mt*-1.612;
-   par[6] = -32.05 + mt*0.177;
-   par[7] = 1.383 + mt*-0.007317;
-   par[8] = -0.01049 + mt*5.532E-05;
-   par[9] = 2.203E-05 + mt*-1.164E-07;
-
-   double gaus = par[0]*exp( -0.5*pow((x-par[1])/par[2],2) );
-   double expo = exp(-par[3]*x);
-   double pol5 = par[4] + par[5]*x + par[6]*pow(x,2) + par[7]*pow(x,3) + par[8]*pow(x,4)
-      + par[9]*pow(x,5);
-
-   double out = gaus + expo*pol5;
-
-   return out;
-
-}
-
 

@@ -1,16 +1,16 @@
 #ifndef TOPMASS_H
 #define TOPMASS_H
 
+#include "TMath.h"
+#include "TLorentzVector.h"
+#include "Math/Functor.h"
+#include "Minuit2/Minuit2Minimizer.h"
+
 #include <vector>
 #include <cmath>
 #include <map>
 #include <TH1.h>
 #include <TH2.h>
-
-#include "TMath.h"
-#include "TLorentzVector.h"
-#include "Math/Functor.h"
-#include "Minuit2/Minuit2Minimizer.h"
 
 using namespace std;
 
@@ -103,8 +103,6 @@ class Fitter{
       void GetVariables(vector<Event>&);
 
       void RunMinimizer(vector<Event>&);
-      double Fmbl_sig(double*, double*);
-      TH1D *Hmbl_bkg;
 
       ROOT::Minuit2::Minuit2Minimizer* gMinuit;
 

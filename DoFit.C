@@ -34,11 +34,11 @@ int main(int argc, char* argv[]){
 
    fitter.DeclareHists();
    fitter.FillHists( eventvec );
-   //fitter.PrintHists();
+   fitter.PrintHists();
 
    fitter.RunMinimizer( eventvec );
 
-   //fitter.PlotTemplates();
+   fitter.PlotTemplates();
 
    return 0;
 }

@@ -39,7 +39,6 @@ double Shapes::Fmbl_tot(double *px, double *pp){
 }
 
 double Shapes::Fmbl_sig(double x, double mt){
-   //TF1 *fl = new TF1("fl","gaus(0)+exp(-[3]*x)*pol5(4)",0,250);
 
    double par [9];
    par[0] = 0.04314 - 0.0001872*mt;
@@ -56,17 +55,12 @@ double Shapes::Fmbl_sig(double x, double mt){
    double gaus2 = par[3]*exp( -0.5*pow((x-par[4])/par[5],2) );
    double landau = par[6]*TMath::Landau(x,par[7],par[8],false);
 
-   double out = gaus1+gaus2+landau;
-
-   return out;
+   return gaus1+gaus2+landau;
 
 }
 
 double Shapes::Fmbl_bkg(double x){
 
-   //int bin = hmbl_bkg->FindBin(x);
-   //if( bin == hmbl_bkg->GetNbinsX()+1 ) bin -= 1;
-   //return hmbl_bkg->GetBinContent( bin ) / hmbl_bkg->Integral("width");
    return hmbl_bkg->Interpolate(x) / hmbl_bkg->Integral("width");
 
 }

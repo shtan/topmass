@@ -271,21 +271,17 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    TCanvas *cfit_mbl = new TCanvas("cfit_mbl","cfit_mbl",800,800);
    cfit_mbl->cd();
 
-   hists_["mbl_r1000"]["data"]->Draw();
-
-   TH1D *hbkg = (TH1D*)hists_["mbl_r1000"]["ttbar172_mistag"]->Clone("hbkg2");
-   hbkg->Add( hists_["mbl_r1000"]["ttbar172_taus"] );
-   hbkg->Add( hists_["mbl_r1000"]["ttbar172_hadronic"] );
-   hbkg->Add( hists_["mbl_r1000"]["other"] );
-   Shapes * fptr = new Shapes( hists_["mbl_r1000"]["data_bkgcontrol"] );
-   //Shapes * fptr = new Shapes( hists_["mbl_r1000"]["ttbar172_mistag"] );
-   //Shapes * fptr = new Shapes( hbkg );
+   Shapes * fptr = new Shapes( hists_["mbl_fit"]["data_bkgcontrol"] );
    TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
-   // evaluate integral
+
+   // normalization inside likelihood function (temp)
    fmbl_tot->SetParameters( xmin[0], 1.0, 1.0, 1.0 );
    double integral = fmbl_tot->Integral(0,1000);
-   fmbl_tot->SetParameters( xmin[0], xmin[1], hists_["mbl_r1000"]["data"]->Integral("width"), integral );
-   fmbl_tot->DrawCopy("same");
+   fmbl_tot->SetParameters( xmin[0], xmin[1],
+         hists_["mbl_fit"]["data"]->Integral("width"), integral );
+
+   fmbl_tot->DrawCopy();
+   hists_["mbl_fit"]["data"]->DrawCopy("same");
 
    cfit_mbl->Write();
 
@@ -295,32 +291,26 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
 double Fitter::Min2LL(const double *x){
 
-   // temp -- evaluate integral
-   Shapes * fptr = new Shapes( hists_["mbl_r1000"]["data_bkgcontrol"] );
+   // normalization inside likelihood function (temp)
+   Shapes * fptr = new Shapes( hists_["mbl_fit"]["data_bkgcontrol"] );
    TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
    fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0 );
    double integral = fmbl_tot->Integral(0,1000);
    delete fmbl_tot;
    delete fptr;
 
-   TH1D *hbkg = (TH1D*)hists_["mbl_r1000"]["ttbar172_mistag"]->Clone("hbkg");
-   hbkg->Add( hists_["mbl_r1000"]["ttbar172_taus"] );
-   hbkg->Add( hists_["mbl_r1000"]["ttbar172_hadronic"] );
-   hbkg->Add( hists_["mbl_r1000"]["other"] );
-   Shapes shape( hists_["mbl_r1000"]["data_bkgcontrol"] );
-   //Shapes shape( hists_["mbl"]["ttbar172_mistag"] );
-   //Shapes shape( hbkg );
-   // evaluate likelihood
+   Shapes shape( hists_["mbl_fit"]["data_bkgcontrol"] );
+
    double pmbl [] = {x[0], x[1], 1.0, integral};
    double m2ll = 0;
+   // evaluate likelihood
    for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++){
       if( ev->process.compare("data") != 0 ) continue;
+
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
-
-         double Lmbl = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
-         m2ll -= 2.0*ev->weight*log( Lmbl );
-
+         m2ll -= 2.0*ev->weight*log( shape.Fmbl_tot( &(ev->mbls[i]), pmbl ) );
       }
+
    }
 
    return m2ll;

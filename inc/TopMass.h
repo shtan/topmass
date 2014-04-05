@@ -71,28 +71,8 @@ struct Event {
 
 };
 
-struct Hists {
-
-   string name;
-   string title;
-   int nbins;
-   double xlow;
-   double xup;
-
-   map<string, TH1D*> proc;
-   TH1D *httbar_signal;
-   TH1D *httbar_mistag;
-   TH1D *httbar_taus;
-   TH1D *httbar_hadronic;
-   TH1D *hother;
-
-   Hists(){
-
-   }
-
-};
-
 class Fitter{
+
    public:
 
       Fitter();
@@ -103,6 +83,7 @@ class Fitter{
       void GetVariables(vector<Event>&);
 
       void RunMinimizer(vector<Event>&);
+      void PlotResults(const double*);
 
       ROOT::Minuit2::Minuit2Minimizer* gMinuit;
 

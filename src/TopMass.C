@@ -112,6 +112,7 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
    datasets[ "ttbar178" ].mc_xsec    = 234;
    datasets[ "ttbar181" ].mc_xsec    = 234;
 
+   return;
 }
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
@@ -243,6 +244,7 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
 
    }
 
+   return;
 }
 
 
@@ -262,31 +264,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    gMinuit->Minimize();
    gMinuit->Hesse();
 
-   const double *xmin = gMinuit->X();
-
-   // plot fit results
-   TFile *fileout = new TFile( "results/plotsFitResults.root", "RECREATE" );
-   fileout->cd();
-   
-   TCanvas *cfit_mbl = new TCanvas("cfit_mbl","cfit_mbl",800,800);
-   cfit_mbl->cd();
-
-   Shapes * fptr = new Shapes( hists_["mbl_fit"]["data_bkgcontrol"] );
-   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
-
-   // normalization inside likelihood function (temp)
-   fmbl_tot->SetParameters( xmin[0], 1.0, 1.0, 1.0 );
-   double integral = fmbl_tot->Integral(0,1000);
-   fmbl_tot->SetParameters( xmin[0], xmin[1],
-         hists_["mbl_fit"]["data"]->Integral("width"), integral );
-
-   fmbl_tot->DrawCopy();
-   hists_["mbl_fit"]["data"]->DrawCopy("same");
-
-   cfit_mbl->Write();
-
-   fileout->Close();
-
+   return;
 }
 
 double Fitter::Min2LL(const double *x){
@@ -316,3 +294,109 @@ double Fitter::Min2LL(const double *x){
    return m2ll;
 }
 
+void Fitter::PlotResults(const double *xmin){
+
+   // plot fit results
+   TFile *fileout = new TFile( "results/plotsFitResults.root", "RECREATE" );
+   fileout->cd();
+
+   string names [] = {"mbl","mbl_fit"};
+   for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){
+
+      TCanvas *canvas = new TCanvas( ("c_"+names[i]).c_str(), ("c_"+names[i]).c_str(), 800, 800);
+      canvas->SetFillColor(0);
+      canvas->cd();
+
+      TPad *pad1 = new TPad("pad1","pad1",0,0.33,1,1);
+      TPad *pad2 = new TPad("pad2","pad2",0,0,1,0.33);
+      pad1->SetTopMargin(0.1);
+      pad1->SetBottomMargin(0.01);
+      pad1->SetRightMargin(0.1);
+      pad1->SetFillColor(0);
+      pad2->SetTopMargin(0.01);
+      pad2->SetBottomMargin(0.3);
+      pad2->SetRightMargin(0.1);
+      pad2->SetFillColor(0);
+      pad1->Draw();
+      pad2->Draw();
+
+      // line for ratio plot
+      TF1 *func = new TF1("func","[0]",-10E6,10E6);
+      func->SetParameter(0,1.0);
+      func->SetLineWidth(1);
+      func->SetLineStyle(7);
+      func->SetLineColor(1);
+
+      // pad 1
+      pad1->cd();
+
+      TH1D *hdata = (TH1D*)hists_[names[i]]["data"]->Clone("hdata");
+      if( names[i].compare("mbl_fit") == 0 ){
+         hdata->Rebin(4);
+         hdata->GetYaxis()->SetTitle("Events/10 GeV");
+      }
+
+      hdata->GetXaxis()->SetTitleSize(0.00);
+      hdata->GetYaxis()->SetLabelSize(0.07);
+      hdata->GetYaxis()->SetTitleSize(0.08);
+      hdata->GetYaxis()->SetTitleOffset(1.0);
+      hdata->GetXaxis()->SetLabelFont(42);
+      hdata->GetYaxis()->SetLabelFont(42);
+      hdata->GetXaxis()->SetTitleFont(42);
+      hdata->GetYaxis()->SetTitleFont(42);
+
+      hdata->SetMarkerStyle(20);
+      hdata->Draw();
+
+      Shapes * fptr = new Shapes( hists_["mbl_fit"]["data_bkgcontrol"] );
+      TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
+
+      // normalization inside likelihood function (temp)
+      ftemplate->SetParameters( xmin[0], 1.0, 1.0, 1.0 );
+      double integral = ftemplate->Integral(0,1000);
+      ftemplate->SetParameters( xmin[0], xmin[1],
+            hdata->Integral("width"), integral );
+
+      ftemplate->SetLineWidth(2);
+      ftemplate->DrawCopy("same");
+      hdata->DrawCopy("same"); // redraw points
+
+      // pad 2
+      pad2->cd();
+      TH1D *hratio = (TH1D*)hists_[names[i]]["data"]->Clone("hratio");
+      if( names[i].compare("mbl_fit") == 0 ) hratio->Rebin(4);
+      hratio->Divide( ftemplate );
+
+      hratio->SetTitle("");
+      hratio->GetYaxis()->SetTitle("data/mc");
+      hratio->GetYaxis()->CenterTitle();
+      hratio->SetStats(0);
+
+      hratio->GetXaxis()->SetTitleSize(0.14);
+      hratio->GetXaxis()->SetLabelSize(0.14);
+      hratio->GetYaxis()->SetLabelSize(0.11);
+      hratio->GetYaxis()->SetTitleSize(0.14);
+      hratio->GetYaxis()->SetTitleOffset(0.28);
+      hratio->GetXaxis()->SetLabelFont(42);
+      hratio->GetYaxis()->SetLabelFont(42);
+      hratio->GetXaxis()->SetTitleFont(42);
+      hratio->GetYaxis()->SetTitleFont(42);
+      hratio->SetMaximum( 1.6 );
+      hratio->SetMinimum( 0.4 );
+      hratio->GetYaxis()->SetNdivisions(505);
+
+      hratio->Draw("EP");
+      func->Draw("same");
+
+      canvas->Write();
+
+      delete canvas;
+      delete func;
+      delete fptr;
+      delete ftemplate;
+   }
+
+   fileout->Close();
+
+   return;
+}

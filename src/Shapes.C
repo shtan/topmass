@@ -35,7 +35,6 @@ double Shapes::Fmbl_tot(double *px, double *pp){
    double integral = pp[3];
 
    return norm*(k*Fmbl_sig(x, mt)/integral + (1-k)*Fmbl_bkg(x));
-
 }
 
 double Shapes::Fmbl_sig(double x, double mt){
@@ -56,11 +55,9 @@ double Shapes::Fmbl_sig(double x, double mt){
    double landau = par[6]*TMath::Landau(x,par[7],par[8],false);
 
    return gaus1+gaus2+landau;
-
 }
 
 double Shapes::Fmbl_bkg(double x){
 
    return hmbl_bkg->Interpolate(x) / hmbl_bkg->Integral("width");
-
 }

@@ -404,8 +404,8 @@ void Fitter::PlotResults(){
    //
    // plot likelihood near minimum
    //
-   unsigned int npnts_mt = 10;
-   unsigned int npnts_kmbl = 10;
+   unsigned int npnts_mt = 30;
+   unsigned int npnts_kmbl = 30;
    double mt_lrange = xmin[0]-3*xerr[0];
    double mt_rrange = xmin[0]+3*xerr[0];
    double kmbl_lrange = xmin[1]-3*xerr[1];
@@ -455,6 +455,7 @@ void Fitter::PlotResults(){
    TCanvas *cLmbl = new TCanvas("cLmbl", "cLmbl", 800, 800);
    cLmbl->cd();
    hLmbl->Draw("colz");
+   cLmbl->Write("cLmbl");
 
    /*
    // 2 sigma contour
@@ -476,9 +477,6 @@ void Fitter::PlotResults(){
    gs->SetLineColor(5);
    gs->Draw("same C");
    */
-
-   cLmbl->Write("cLmbl");
-  
 
    fileout->Write();
    fileout->Close();

@@ -478,7 +478,6 @@ void Fitter::PlotResults(){
    gs->Draw("same C");
    */
 
-   fileout->Write();
    fileout->Close();
 
    return;

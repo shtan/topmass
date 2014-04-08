@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
    bool do_fit = true;
    bool do_diagnostics = true;
 
-   while( (c = getopt(argc, argv, "fd")) != -1 ) {
+   while( (c = getopt(argc, argv, "fdh")) != -1 ) {
       switch(c)
       {
          case 'f' :
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]){
 
    if( do_fit ){
       fitter.RunMinimizer( eventvec );
-      fitter.PlotResults(fitter.gMinuit->X());
+      fitter.PlotResults();
    }
 
    fitter.PlotTemplates();

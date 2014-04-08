@@ -83,7 +83,7 @@ class Fitter{
       void GetVariables(vector<Event>&);
 
       void RunMinimizer(vector<Event>&);
-      void PlotResults(const double*);
+      void PlotResults();
 
       ROOT::Minuit2::Minuit2Minimizer* gMinuit;
 

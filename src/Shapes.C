@@ -16,6 +16,7 @@ using namespace std;
 
 Shapes::Shapes(TH1D *&hist){
    hmbl_bkg = hist;
+   norm_mbl_bkg = hist->Integral("width");
 }
 
 Shapes::~Shapes(){
@@ -59,5 +60,5 @@ double Shapes::Fmbl_sig(double x, double mt){
 
 double Shapes::Fmbl_bkg(double x){
 
-   return hmbl_bkg->Interpolate(x) / hmbl_bkg->Integral("width");
+   return hmbl_bkg->Interpolate(x) / norm_mbl_bkg;
 }

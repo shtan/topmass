@@ -17,6 +17,7 @@ class Shapes{
       double Fmbl_bkg(double);
 
       TH1D* hmbl_bkg;
+      double norm_mbl_bkg;
 
 };
 

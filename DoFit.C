@@ -91,6 +91,8 @@ int main(int argc, char* argv[]){
    cout << endl;
 
    fitter.PlotTemplates();
+/*
+   return 0;
 
    //
    // ################ GP regression ###################
@@ -142,7 +144,7 @@ int main(int argc, char* argv[]){
    vector<double> ptrain;
    for(int i=0; i < ntrain; i++) ptrain.push_back( (i+0.5)*rtrain/ntrain );
 
-   TH1D *htemp = (TH1D*)fitter.hists_["mbl"]["ttbar172_signal"]->Clone("htemp");
+   TH1D *htemp = (TH1D*)fitter.hists_["mbl"]["ttbar161_signal"]->Clone("htemp");
    //htemp->Scale( 1.0/htemp->Integral("width") );
    cout << "norm = " << htemp->Integral("width") << endl;
 
@@ -178,6 +180,8 @@ int main(int argc, char* argv[]){
    TVectorD a(ntrain);
    a = A*y;
 
+   for(int i=0; i < ntrain; i++) cout << i << " " << a[i] << endl;
+
    // cout training points
    for(int i=0; i < ntrain; i++){
       cout << "(x,y,a) = " << ptrain[i] << ", " << y[i] << ", " << a[i] << endl;
@@ -210,6 +214,7 @@ int main(int argc, char* argv[]){
    filegp->Close();
 
    return 0;
+   */
    if( do_fit ){
       fitter.RunMinimizer( eventvec );
       fitter.PlotResults();

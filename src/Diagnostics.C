@@ -502,9 +502,9 @@ void Fitter::PrintHists(){
 
       gStyle->SetOptFit();
 
-      double b = func->GetParameter(1);
-      double a = func->GetParameter(2);
-      double minimum = -b/(2*a);
+      double pb = func->GetParameter(1);
+      double pa = func->GetParameter(2);
+      double minimum = -pb/(2*pa);
 
       cout << hname << " minimum = " << minimum << endl;
 
@@ -541,6 +541,9 @@ void Fitter::PlotTemplates(){
 
    TFile *fileout = new TFile( "results/plotsTemplates.root", "RECREATE" );
    fileout->cd();
+
+   Shapes * fptr = new Shapes( hists_ );
+   fptr->TrainGP();
 
    // templates for all masses
    string names [] = {"mbl","mbl_fit"};
@@ -614,7 +617,6 @@ void Fitter::PlotTemplates(){
             hmc->SetMarkerStyle(20);
             hmc->DrawCopy();
 
-            Shapes * fptr = new Shapes( hists_["mbl_fit"]["data_bkgcontrol"] );
             TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
 
             // normalization inside likelihood function (temp)
@@ -657,7 +659,6 @@ void Fitter::PlotTemplates(){
 
             delete canvas;
             delete func;
-            delete fptr;
             delete ftemplate;
          }
       }
@@ -688,7 +689,6 @@ void Fitter::PlotTemplates(){
    mbl181->DrawCopy("same");
 
    // mbl likelihood
-   Shapes * fptr = new Shapes( hists_["mbl"]["data_bkgcontrol"] );
    TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 300, 4);
 
    fmbl_tot->SetParameter(1, 1.0);

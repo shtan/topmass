@@ -14,9 +14,13 @@
 #include "TStyle.h"
 #include "TRandom3.h"
 
+#include "TMatrixD.h"
+#include "TVectorD.h"
+
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 #include "Math/Functor.h"
 #include "Minuit2/Minuit2Minimizer.h"
@@ -43,7 +47,6 @@ Fitter::Fitter(){
    // plot formatting
    gROOT->ProcessLineSync(".L scripts/tdrstyle.C");
    gROOT->ProcessLineSync("setTDRStyle()");
-
 
 }
 
@@ -252,13 +255,20 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
-   gMinuit->SetTolerance(0.001);
+   //gMinuit->SetTolerance(0.001);
+   gMinuit->SetTolerance(0.01);
    gMinuit->SetPrintLevel(3);
 
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
    gMinuit->SetFunction( *fFunc );
    gMinuit->SetVariable(0, "topMass", 173.0, 0.01);
    gMinuit->SetLimitedVariable(1, "norm", 0.5, 0.01, 0, 1.0);
+
+   // aGP initialize
+   Shapes * fptr = new Shapes( hists_ );
+   fptr->TrainGP();
+   aGP.ResizeTo( fptr->aGP.GetNoElements() );
+   aGP = fptr->aGP;
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
@@ -271,14 +281,18 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
-   Shapes * fptr = new Shapes( hists_["mbl_fit"]["data_bkgcontrol"] );
+   Shapes * fptr = new Shapes( hists_ );
+   fptr->aGP.ResizeTo( aGP.GetNoElements() );
+   fptr->aGP = aGP;
    TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
    fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0 );
    double integral = fmbl_tot->Integral(0,1000);
    delete fmbl_tot;
    delete fptr;
 
-   Shapes shape( hists_["mbl_fit"]["data_bkgcontrol"] );
+   Shapes shape( hists_ );
+   shape.aGP.ResizeTo( aGP.GetNoElements() );
+   shape.aGP = aGP;
 
    double pmbl [] = {x[0], x[1], 1.0, integral};
    double m2ll = 0;
@@ -287,7 +301,9 @@ double Fitter::Min2LL(const double *x){
       if( ev->process.compare("data") != 0 ) continue;
 
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
-         m2ll -= 2.0*ev->weight*log( shape.Fmbl_tot( &(ev->mbls[i]), pmbl ) );
+         double val = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
+         if( val <= 0 ) val = 1E-10;
+         m2ll -= 2.0*ev->weight*log( val );
       }
 
    }
@@ -353,7 +369,8 @@ void Fitter::PlotResults(){
       hdata->SetMarkerStyle(20);
       hdata->Draw();
 
-      Shapes * fptr = new Shapes( hists_["mbl_fit"]["data_bkgcontrol"] );
+      Shapes * fptr = new Shapes( hists_ );
+      fptr->TrainGP();
       TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
 
       // normalization inside likelihood function (temp)
@@ -430,16 +447,17 @@ void Fitter::PlotResults(){
    // kmbl vs mt
    TH2D *hLmbl = new TH2D("hLmbl", "hLmbl", npnts_mt, mt_lrange, mt_rrange,
          npnts_kmbl, kmbl_lrange, kmbl_rrange);
+   /*
+   cout << "Generating 2d profile." << endl;
    for(unsigned int i=0; i <= npnts_mt; i++){
       for(unsigned int j=0; j <= npnts_kmbl; j++){
-         cout << "2d profile, pnt " << i << ", " << j << endl;
          double mt = hLmbl->GetXaxis()->GetBinCenter(i);
          double kmbl = hLmbl->GetYaxis()->GetBinCenter(j);
          const double par [] = {mt, kmbl, xmin[2], xmin[3]};
          hLmbl->SetBinContent(i, j, Min2LL(par) - minvalue);
       }
    }
-
+*/
    TCanvas *cLmt = new TCanvas("cLmt", "cLmt", 800, 800);
    cLmt->cd();
    gLmt->SetMarkerStyle(20);
@@ -482,3 +500,4 @@ void Fitter::PlotResults(){
 
    return;
 }
+

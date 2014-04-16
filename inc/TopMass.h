@@ -1,10 +1,12 @@
 #ifndef TOPMASS_H
 #define TOPMASS_H
 
+#include "Shapes.h"
 #include "TMath.h"
 #include "TLorentzVector.h"
 #include "Math/Functor.h"
 #include "Minuit2/Minuit2Minimizer.h"
+#include "TVectorD.h"
 
 #include <vector>
 #include <cmath>
@@ -94,6 +96,8 @@ class Fitter{
       void PrintHists();
       void PlotTemplates();
 
+      TVectorD aGP;
+      
    private:
 
       double Min2LL(const double*);

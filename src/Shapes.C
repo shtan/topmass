@@ -15,9 +15,11 @@ using namespace std;
 // constructor and destructor
 //
 
-Shapes::Shapes( map< string, map<string, TH1D*> > &temphists_ ){
-   hists_ = temphists_;
-   hmbl_bkg = (TH1D*)hists_["mbl_fit"]["data_bkgcontrol"]->Clone("hmbl_bkg");
+Shapes::Shapes( TH1D *&hmbl_bkg_temp ){
+
+   //hists_ = temphists_;
+   //hmbl_bkg = (TH1D*)hists_["mbl_fit"]["data_bkgcontrol"]->Clone("hmbl_bkg");
+   hmbl_bkg = (TH1D*)hmbl_bkg_temp->Clone("hmbl_bkg");
    norm_mbl_bkg = hmbl_bkg->Integral("width");
 
    // GP options
@@ -95,7 +97,7 @@ double Shapes::GPkern(double x1, double x2, double lx, double m1, double m2, dou
    return kernel;
 }
 
-void Shapes::TrainGP(){
+void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
 
    double masspnts [] = {161.5, 163.5, 166.5, 169.5, 172.5, 175.5, 178.5, 181.5};
    int nmasses = 8;

@@ -12,7 +12,8 @@ class Shapes{
 
    public:
 
-      Shapes( map< string, map<string,TH1D*> >& );
+      //Shapes( map< string, map<string,TH1D*> >& );
+      Shapes( TH1D*& );
       ~Shapes();
 
       double Fmbl_tot(double*, double*);
@@ -25,10 +26,10 @@ class Shapes{
       vector<double> ptrain;
       TVectorD aGP;
       void SetGPopts();
-      void TrainGP();
+      void TrainGP( map< string, map<string, TH1D*> >& );
       double GPkern(double, double, double, double, double, double);
 
-      map< string, map<string, TH1D*> > hists_; // copy from TopMass class
+      //map< string, map<string, TH1D*> > hists_; // copy from TopMass class
 
       TH1D* hmbl_bkg;
       double norm_mbl_bkg;

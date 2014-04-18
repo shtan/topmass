@@ -25,44 +25,51 @@
 using namespace std;
 
 
-void Fitter::DeclareHists(){
+void Fitter::DeclareHists( map< string, map<string, TH1D*> >& hists_, string label ){
 
    vector<string> type;
    type.push_back("data");
    type.push_back("data_bkgcontrol");
    type.push_back("other");
+   type.push_back("other_bkgcontrol");
    string masspnts [] = {"161","163","166","169","172","175","178","181"};
    for(int i=0; i < 8; i++){
       type.push_back("ttbar"+masspnts[i]+"_signal");
       type.push_back("ttbar"+masspnts[i]+"_mistag");
       type.push_back("ttbar"+masspnts[i]+"_taus");
       type.push_back("ttbar"+masspnts[i]+"_hadronic");
+      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_signal");
+      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_mistag");
+      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_taus");
+      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_hadronic");
    }
+   type.push_back("fitevts"); // for displaying fit results (could be mc or data)
 
    for(vector<string>::iterator t = type.begin(); t < type.end(); t++){
          
       string name = *t;
+      string namel = *t+label;
 
       //
       // variables
       //
 
-      hists_["mt2_220"][name] = new TH1D( ("hmt2_220_"+name).c_str(),
+      hists_["mt2_220"][name] = new TH1D( ("hmt2_220_"+namel).c_str(),
             "M_{T2} 220;M_{T2} 220 (GeV);Events/2.5 GeV", 100, 0, 250 );
-      hists_["mt2_221"][name] = new TH1D( ("hmt2_221_"+name).c_str(),
+      hists_["mt2_221"][name] = new TH1D( ("hmt2_221_"+namel).c_str(),
             "M_{T2} 221;M_{T2} 221 (GeV);Events/2 GeV", 100, 50, 250 );
-      hists_["mbl"][name] = new TH1D( ("hmbl_"+name).c_str(),
+      hists_["mbl"][name] = new TH1D( ("hmbl_"+namel).c_str(),
             "M_{bl};M_{bl} (GeV);Events/3 GeV", 100, 0, 300 );
-      hists_["mbl_fit"][name] = new TH1D( ("hmbl_fit_"+name).c_str(),
+      hists_["mbl_fit"][name] = new TH1D( ("hmbl_fit_"+namel).c_str(),
             "M_{bl};M_{bl} (GeV);Events/2.5 GeV", 400, 0, 1000 );
-      hists_["mt2_210"][name] = new TH1D( ("hmt2_210_"+name).c_str(),
+      hists_["mt2_210"][name] = new TH1D( ("hmt2_210_"+namel).c_str(),
             "M_{T2} 210;M_{T2} 210 (GeV);Events/1.5 GeV", 100, 0, 150 );
-      hists_["mt2_220_matchmbl"][name] = new TH1D( ("hmt2_220_matchmbl_"+name).c_str(),
+      hists_["mt2_220_matchmbl"][name] = new TH1D( ("hmt2_220_matchmbl_"+namel).c_str(),
             "M_{T2} 220;M_{T2} 220 (GeV);Events/2.5 GeV", 100, 0, 250 );
-      hists_["mt2_220_nomatchmbl"][name] = new TH1D( ("hmt2_220_nomatchmbl_"+name).c_str(),
+      hists_["mt2_220_nomatchmbl"][name] = new TH1D( ("hmt2_220_nomatchmbl_"+namel).c_str(),
             "M_{T2} 220;M_{T2} 220 (GeV);Events/2.5 GeV", 100, 0, 250 );
 
-      //hists2d_["mblV220"][name] = new TH2D( ("hmblV220_"+name).c_str(),
+      //hists2d_["mblV220"][name] = new TH2D( ("hmblV220_"+namel).c_str(),
       //      "220 vs. mbl", 50, 0, 250, 50, 0, 250 );
 
       //
@@ -70,73 +77,96 @@ void Fitter::DeclareHists(){
       //
 
       // pt, eta, phi
-      hists_["b_pt"][name] = new TH1D( ("hb_pt_"+name).c_str(),
+      hists_["b_pt"][name] = new TH1D( ("hb_pt_"+namel).c_str(),
             "b quark p_{T};p_{T} (GeV);Events/2.5 GeV", 100, 0, 250 );
-      hists_["b_eta"][name] = new TH1D( ("hb_eta_"+name).c_str(),
+      hists_["b_eta"][name] = new TH1D( ("hb_eta_"+namel).c_str(),
             "b quark #eta;#eta;Events", 100, -3, 3 );
-      hists_["b_phi"][name] = new TH1D( ("hb_phi_"+name).c_str(),
+      hists_["b_phi"][name] = new TH1D( ("hb_phi_"+namel).c_str(),
             "b quark #phi;#phi;Events", 100, -3.5, 3.5 );
-      hists_["l_pt"][name] = new TH1D( ("hl_pt_"+name).c_str(),
+      hists_["l_pt"][name] = new TH1D( ("hl_pt_"+namel).c_str(),
             "lepton p_{T};p_{T} (GeV);Events/2.5 GeV", 100, 0, 250 );
-      hists_["l_eta"][name] = new TH1D( ("hl_eta_"+name).c_str(),
+      hists_["l_eta"][name] = new TH1D( ("hl_eta_"+namel).c_str(),
             "lepton #eta;#eta;Events", 100, -3, 3 );
-      hists_["l_phi"][name] = new TH1D( ("hl_phi_"+name).c_str(),
+      hists_["l_phi"][name] = new TH1D( ("hl_phi_"+namel).c_str(),
             "lepton #phi;#phi;Events", 100, -3.5, 3.5 );
-      hists_["bb_pt"][name] = new TH1D( ("hbb_pt_"+name).c_str(),
+      hists_["bb_pt"][name] = new TH1D( ("hbb_pt_"+namel).c_str(),
             "bb p_{T};p_{T} (GeV);Events/2.5 GeV", 100, 0, 250 );
-      hists_["bb_eta"][name] = new TH1D( ("hbb_eta_"+name).c_str(),
+      hists_["bb_eta"][name] = new TH1D( ("hbb_eta_"+namel).c_str(),
             "bb Rapidity;Rapidity;Events", 100, -3, 3 );
-      hists_["bb_phi"][name] = new TH1D( ("hbb_phi_"+name).c_str(),
+      hists_["bb_phi"][name] = new TH1D( ("hbb_phi_"+namel).c_str(),
             "bb #phi;#phi;Events", 100, -3.5, 3.5 );
-      hists_["ll_pt"][name] = new TH1D( ("hll_pt_"+name).c_str(),
+      hists_["ll_pt"][name] = new TH1D( ("hll_pt_"+namel).c_str(),
             "ll p_{T};p_{T} (GeV);Events/2.5 GeV", 100, 0, 250 );
-      hists_["ll_eta"][name] = new TH1D( ("hll_eta_"+name).c_str(),
+      hists_["ll_eta"][name] = new TH1D( ("hll_eta_"+namel).c_str(),
             "ll Rapidity;Rapidity;Events", 100, -3, 3 );
-      hists_["ll_phi"][name] = new TH1D( ("hll_phi_"+name).c_str(),
+      hists_["ll_phi"][name] = new TH1D( ("hll_phi_"+namel).c_str(),
             "ll #phi;#phi;Events", 100, -3.5, 3.5 );
-      hists_["bbll_pt"][name] = new TH1D( ("hbbll_pt_"+name).c_str(),
+      hists_["bbll_pt"][name] = new TH1D( ("hbbll_pt_"+namel).c_str(),
             "bbll p_{T};p_{T} (GeV);Events/2.5 GeV", 100, 0, 250 );
-      hists_["bbll_eta"][name] = new TH1D( ("hbbll_eta_"+name).c_str(),
+      hists_["bbll_eta"][name] = new TH1D( ("hbbll_eta_"+namel).c_str(),
             "bbll Rapidity;Rapidity;Events", 100, -3, 3 );
-      hists_["bbll_phi"][name] = new TH1D( ("hbbll_phi_"+name).c_str(),
+      hists_["bbll_phi"][name] = new TH1D( ("hbbll_phi_"+namel).c_str(),
             "bbll #phi;#phi;Events", 100, -3.5, 3.5 );
 
       // invariant mass
-      hists_["bb_m"][name] = new TH1D( ("hbb_m_"+name).c_str(),
+      hists_["bb_m"][name] = new TH1D( ("hbb_m_"+namel).c_str(),
             "bb invariant mass;m_{bb} (GeV);Events/4 GeV", 100, 0, 400 );
-      hists_["ll_m"][name] = new TH1D( ("hll_m_"+name).c_str(),
+      hists_["ll_m"][name] = new TH1D( ("hll_m_"+namel).c_str(),
             "ll invariant mass;m_{ll} (GeV);Events/4 GeV", 100, 0, 400 );
-      hists_["bbl_m"][name] = new TH1D( ("hbbl_m_"+name).c_str(),
+      hists_["bbl_m"][name] = new TH1D( ("hbbl_m_"+namel).c_str(),
             "bbl invariant mass;m_{bbl} (GeV);Events/6 GeV", 100, 0, 600 );
-      hists_["bll_m"][name] = new TH1D( ("hbll_m_"+name).c_str(),
+      hists_["bll_m"][name] = new TH1D( ("hbll_m_"+namel).c_str(),
             "bll invariant mass;m_{bll} (GeV);Events/6 GeV", 100, 0, 600 );
-      hists_["bbll_m"][name] = new TH1D( ("hbbll_m_"+name).c_str(),
+      hists_["bbll_m"][name] = new TH1D( ("hbbll_m_"+namel).c_str(),
             "bbll invariant mass;m_{bbll} (GeV);Events/10 GeV", 100, 0, 1000 );
 
       // angles
-      hists_["bb_dR"][name] = new TH1D( ("hbb_dR_"+name).c_str(),
+      hists_["bb_dR"][name] = new TH1D( ("hbb_dR_"+namel).c_str(),
             "#DeltaR between bb;#DeltaR;Events", 100, 0, 5.0 );
-      hists_["bl_dR"][name] = new TH1D( ("hbl_dR_"+name).c_str(),
+      hists_["bl_dR"][name] = new TH1D( ("hbl_dR_"+namel).c_str(),
             "#DeltaR between bl;#DeltaR;Events", 100, 0, 5.0 );
-      hists_["ll_dR"][name] = new TH1D( ("hll_dR_"+name).c_str(),
+      hists_["ll_dR"][name] = new TH1D( ("hll_dR_"+namel).c_str(),
             "#DeltaR between ll;#DeltaR;Events", 100, 0, 5.0 );
 
       // met
-      hists_["met_x"][name] = new TH1D( ("hmet_x_"+name).c_str(),
+      hists_["met_x"][name] = new TH1D( ("hmet_x_"+namel).c_str(),
             "MET_{x};MET_{x} (GeV);Events/4 GeV", 100, -200, 200 );
-      hists_["met_y"][name] = new TH1D( ("hmet_y_"+name).c_str(),
+      hists_["met_y"][name] = new TH1D( ("hmet_y_"+namel).c_str(),
             "MET_{y};MET_{y} (GeV);Events/4 GeV", 100, -200, 200 );
-      hists_["met"][name] = new TH1D( ("hmet_"+name).c_str(),
+      hists_["met"][name] = new TH1D( ("hmet_"+namel).c_str(),
             "total MET;MET (GeV);Events/3 GeV", 100, 0, 300 );
    }
 
    return;
 }
 
-void Fitter::FillHists( vector<Event>& eventvec ){
+void Fitter::DeleteHists( map< string, map<string, TH1D*> >& hists_ ){
+
+   typedef map<string, TH1D*> tmap;
+   typedef map<string, tmap> hmap;
+
+   for( hmap::iterator h = hists_.begin(); h != hists_.end(); h++){
+      for( tmap::iterator t = h->second.begin(); t != h->second.end(); t++){
+         //t->second->Delete();
+         delete (t->second);
+      }
+   }
+   
+
+}
+
+void Fitter::FillHists( map< string, map<string, TH1D*> >& hists_,
+      vector<Event>& eventvec, bool fit_events ){
 
    // event loop
    for( vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
+
+      string type = fit_events ? "fitevts" : ev->type;
+
+      if( fit_events and !(ev->fit_event) ){
+         cout << "ERROR: FILL WITH FIT EVENTS" << endl;
+         return;
+      }
 
       // define objects
       TLorentzVector jet1 = ev->jet1;
@@ -156,25 +186,25 @@ void Fitter::FillHists( vector<Event>& eventvec ){
       if ( !(jet1.M() < 40 and jet2.M() < 40) ) continue;
 
       if (sin((jet1).DeltaPhi(up221))*sin((jet2).DeltaPhi(up221)) > 0){
-         hists_["mt2_221"][ev->type]->Fill( ev->mt2_221, ev->weight );
+         hists_["mt2_221"][type]->Fill( ev->mt2_221, ev->weight );
       }
 
       bool matchmbl = false;
-      hists_["mt2_220"][ev->type]->Fill( ev->mt2_220, ev->weight );
-      if( ev->mt2_210 > 1 ) hists_["mt2_210"][ev->type]->Fill( ev->mt2_210, ev->weight );
+      hists_["mt2_220"][type]->Fill( ev->mt2_220, ev->weight );
+      if( ev->mt2_210 > 1 ) hists_["mt2_210"][type]->Fill( ev->mt2_210, ev->weight );
 
       for( unsigned int m=0; m < ev->mbls.size(); m++ ){
-         hists_["mbl"][ev->type]->Fill( ev->mbls[m], ev->weight );
-         hists_["mbl_fit"][ev->type]->Fill( ev->mbls[m], ev->weight );
-         //hists2d_["mblV220"][ev->type]->Fill( ev->mt2_220, ev->mbls[m], ev->weight );
+         hists_["mbl"][type]->Fill( ev->mbls[m], ev->weight );
+         hists_["mbl_fit"][type]->Fill( ev->mbls[m], ev->weight );
+         //hists2d_["mblV220"][type]->Fill( ev->mt2_220, ev->mbls[m], ev->weight );
          if( ev->mbls[m] == ev->mt2_220 ) matchmbl = true;
       }
 
       if( matchmbl){
-         hists_["mt2_220_matchmbl"][ev->type]->Fill( ev->mt2_220, ev->weight ); 
+         hists_["mt2_220_matchmbl"][type]->Fill( ev->mt2_220, ev->weight ); 
       }
       else{
-         hists_["mt2_220_nomatchmbl"][ev->type]->Fill( ev->mt2_220, ev->weight );
+         hists_["mt2_220_nomatchmbl"][type]->Fill( ev->mt2_220, ev->weight );
       }
 
       //
@@ -189,56 +219,57 @@ void Fitter::FillHists( vector<Event>& eventvec ){
       double bl_dR4 = fabs(jet2.DeltaR(lep2));
 
       // pt, eta, phi
-      hists_["b_pt"][ev->type]->Fill( jet1.Pt(), ev->weight );
-      hists_["b_pt"][ev->type]->Fill( jet2.Pt(), ev->weight );
-      hists_["b_eta"][ev->type]->Fill( jet1.Eta(), ev->weight );
-      hists_["b_eta"][ev->type]->Fill( jet2.Eta(), ev->weight );
-      hists_["b_phi"][ev->type]->Fill( jet1.Phi(), ev->weight );
-      hists_["b_phi"][ev->type]->Fill( jet2.Phi(), ev->weight );
-      hists_["l_pt"][ev->type]->Fill( lep1.Pt(), ev->weight );
-      hists_["l_pt"][ev->type]->Fill( lep2.Pt(), ev->weight );
-      hists_["l_eta"][ev->type]->Fill( lep1.Eta(), ev->weight );
-      hists_["l_eta"][ev->type]->Fill( lep2.Eta(), ev->weight );
-      hists_["l_phi"][ev->type]->Fill( lep1.Phi(), ev->weight );
-      hists_["l_phi"][ev->type]->Fill( lep2.Phi(), ev->weight );
-      hists_["bb_pt"][ev->type]->Fill( bb.Pt(), ev->weight );
-      hists_["bb_eta"][ev->type]->Fill( bb.Rapidity(), ev->weight );
-      hists_["bb_phi"][ev->type]->Fill( bb.Phi(), ev->weight );
-      hists_["ll_pt"][ev->type]->Fill( ll.Pt(), ev->weight );
-      hists_["ll_eta"][ev->type]->Fill( ll.Rapidity(), ev->weight );
-      hists_["ll_phi"][ev->type]->Fill( ll.Phi(), ev->weight );
-      hists_["bbll_pt"][ev->type]->Fill( bbll.Pt(), ev->weight );
-      hists_["bbll_eta"][ev->type]->Fill( bbll.Rapidity(), ev->weight );
-      hists_["bbll_phi"][ev->type]->Fill( bbll.Phi(), ev->weight );
+      hists_["b_pt"][type]->Fill( jet1.Pt(), ev->weight );
+      hists_["b_pt"][type]->Fill( jet2.Pt(), ev->weight );
+      hists_["b_eta"][type]->Fill( jet1.Eta(), ev->weight );
+      hists_["b_eta"][type]->Fill( jet2.Eta(), ev->weight );
+      hists_["b_phi"][type]->Fill( jet1.Phi(), ev->weight );
+      hists_["b_phi"][type]->Fill( jet2.Phi(), ev->weight );
+      hists_["l_pt"][type]->Fill( lep1.Pt(), ev->weight );
+      hists_["l_pt"][type]->Fill( lep2.Pt(), ev->weight );
+      hists_["l_eta"][type]->Fill( lep1.Eta(), ev->weight );
+      hists_["l_eta"][type]->Fill( lep2.Eta(), ev->weight );
+      hists_["l_phi"][type]->Fill( lep1.Phi(), ev->weight );
+      hists_["l_phi"][type]->Fill( lep2.Phi(), ev->weight );
+      hists_["bb_pt"][type]->Fill( bb.Pt(), ev->weight );
+      hists_["bb_eta"][type]->Fill( bb.Rapidity(), ev->weight );
+      hists_["bb_phi"][type]->Fill( bb.Phi(), ev->weight );
+      hists_["ll_pt"][type]->Fill( ll.Pt(), ev->weight );
+      hists_["ll_eta"][type]->Fill( ll.Rapidity(), ev->weight );
+      hists_["ll_phi"][type]->Fill( ll.Phi(), ev->weight );
+      hists_["bbll_pt"][type]->Fill( bbll.Pt(), ev->weight );
+      hists_["bbll_eta"][type]->Fill( bbll.Rapidity(), ev->weight );
+      hists_["bbll_phi"][type]->Fill( bbll.Phi(), ev->weight );
 
       // invariant mass
-      hists_["bb_m"][ev->type]->Fill( bb.M(), ev->weight );
-      hists_["ll_m"][ev->type]->Fill( ll.M(), ev->weight );
-      hists_["bbll_m"][ev->type]->Fill( bbll.M(), ev->weight );
-      hists_["bll_m"][ev->type]->Fill( bll1.M(), ev->weight );
-      hists_["bll_m"][ev->type]->Fill( bll2.M(), ev->weight );
-      hists_["bbl_m"][ev->type]->Fill( bbl1.M(), ev->weight );
-      hists_["bbl_m"][ev->type]->Fill( bbl2.M(), ev->weight );
+      hists_["bb_m"][type]->Fill( bb.M(), ev->weight );
+      hists_["ll_m"][type]->Fill( ll.M(), ev->weight );
+      hists_["bbll_m"][type]->Fill( bbll.M(), ev->weight );
+      hists_["bll_m"][type]->Fill( bll1.M(), ev->weight );
+      hists_["bll_m"][type]->Fill( bll2.M(), ev->weight );
+      hists_["bbl_m"][type]->Fill( bbl1.M(), ev->weight );
+      hists_["bbl_m"][type]->Fill( bbl2.M(), ev->weight );
 
       // dR
-      hists_["bb_dR"][ev->type]->Fill( bb_dR, ev->weight );
-      hists_["ll_dR"][ev->type]->Fill( ll_dR, ev->weight );
-      hists_["bl_dR"][ev->type]->Fill( bl_dR1, ev->weight );
-      hists_["bl_dR"][ev->type]->Fill( bl_dR2, ev->weight );
-      hists_["bl_dR"][ev->type]->Fill( bl_dR3, ev->weight );
-      hists_["bl_dR"][ev->type]->Fill( bl_dR4, ev->weight );
+      hists_["bb_dR"][type]->Fill( bb_dR, ev->weight );
+      hists_["ll_dR"][type]->Fill( ll_dR, ev->weight );
+      hists_["bl_dR"][type]->Fill( bl_dR1, ev->weight );
+      hists_["bl_dR"][type]->Fill( bl_dR2, ev->weight );
+      hists_["bl_dR"][type]->Fill( bl_dR3, ev->weight );
+      hists_["bl_dR"][type]->Fill( bl_dR4, ev->weight );
 
       // met
-      hists_["met"][ev->type]->Fill( met.Pt(), ev->weight );
-      hists_["met_x"][ev->type]->Fill( met.Px(), ev->weight );
-      hists_["met_y"][ev->type]->Fill( met.Py(), ev->weight );
+      hists_["met"][type]->Fill( met.Pt(), ev->weight );
+      hists_["met_x"][type]->Fill( met.Px(), ev->weight );
+      hists_["met_y"][type]->Fill( met.Py(), ev->weight );
 
    }
 
    return;
 }
 
-void Fitter::PrintHists(){
+void Fitter::PrintHists( map< string, map<string, TH1D*> >& hists_ ){
+   cout << "Printing data/mc plots." << endl;
 
    typedef map<string, TH1D*> tmap;
    typedef map<string, tmap> hmap;
@@ -537,13 +568,10 @@ void Fitter::PrintHists(){
    return;
 }
 
-void Fitter::PlotTemplates(){
+void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
    TFile *fileout = new TFile( "results/plotsTemplates.root", "RECREATE" );
    fileout->cd();
-
-   Shapes * fptr = new Shapes( hists_ );
-   fptr->TrainGP();
 
    // templates for all masses
    string names [] = {"mbl","mbl_fit"};
@@ -599,6 +627,14 @@ void Fitter::PlotTemplates(){
                hmc->Add( hists_[names[i]]["other"] );
             }
 
+            // set bkg control sample
+            TH1D *hmc_bkg;
+            hmc_bkg = (TH1D*)hists_[names[i]]["ttbar"+smass+"_bkgcontrol_signal"]->Clone("hmc_bkg");
+            hmc_bkg->Add( hists_[names[i]]["ttbar"+smass+"_bkgcontrol_mistag"] );
+            hmc_bkg->Add( hists_[names[i]]["ttbar"+smass+"_bkgcontrol_taus"] );
+            hmc_bkg->Add( hists_[names[i]]["ttbar"+smass+"_bkgcontrol_hadronic"] );
+            hmc_bkg->Add( hists_[names[i]]["other_bkgcontrol"] );
+
             if( names[i].compare("mbl_fit") == 0 ){
                hmc->Rebin(4);
                hmc->GetYaxis()->SetTitle("Events/10 GeV");
@@ -617,11 +653,14 @@ void Fitter::PlotTemplates(){
             hmc->SetMarkerStyle(20);
             hmc->DrawCopy();
 
+            Shapes * fptr = new Shapes( hmc_bkg );
+            fptr->aGP.ResizeTo( aGP.GetNoElements() );
+            fptr->aGP = aGP;
             TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
 
             // normalization inside likelihood function (temp)
             ftemplate->SetParameters( masspnts[j], 1-k, 1.0, 1.0 );
-            double integral = sb[k] == "sig" ? ftemplate->Integral(0,1000) : 1.0;
+            double integral = (sb[k] == "sig") ? ftemplate->Integral(0,1000) : 1.0;
             ftemplate->SetParameters( masspnts[j], 1-k,
                   hmc->Integral("width"), integral );
 
@@ -660,11 +699,13 @@ void Fitter::PlotTemplates(){
             delete canvas;
             delete func;
             delete ftemplate;
+            delete fptr;
          }
       }
    }
    fileout->cd();
 
+   /*
    TCanvas *cmbl_signal = new TCanvas("cmbl_signal","M_{bl} Template",800,800);
    cmbl_signal->cd();
 
@@ -716,7 +757,7 @@ void Fitter::PlotTemplates(){
    lm->Draw("same");
 
    cmbl_signal->Write();
-
+*/
    fileout->Close();
 
    return;

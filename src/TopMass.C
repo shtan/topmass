@@ -120,7 +120,7 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 }
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
-      string selection, vector<Event>& eventvec ){
+      string selection, vector<Event>& eventvec, int opt ){
    cout << "... " << process << endl;
    
    // declare variables
@@ -166,8 +166,20 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       tree->SetBranchAddress("puMyWeight", &puMyWeight);
    }
 
+   // subset of events to use (for training, testing)
+   int start = 0;
+   int end = tree->GetEntries();
+   if( opt == 1 ){
+      start = 0;
+      end = tree->GetEntries()/2;
+   }
+   if( opt == 2 ){
+      start = tree->GetEntries()/2;
+      end = tree->GetEntries();
+   }
+
    // fill event vector
-   for( int ev=0; ev < tree->GetEntries(); ev++ ){
+   for( int ev=start; ev < end; ev++ ){
 
       tree->GetEntry(ev);
 
@@ -252,7 +264,7 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
 }
 
 
-void Fitter::RunMinimizer( vector<Event>& eventvec ){
+void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
    //gMinuit->SetTolerance(0.001);
@@ -264,14 +276,10 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    gMinuit->SetVariable(0, "topMass", 173.0, 0.01);
    gMinuit->SetLimitedVariable(1, "norm", 0.5, 0.01, 0, 1.0);
 
-   // aGP initialize
-   Shapes * fptr = new Shapes( hists_ );
-   fptr->TrainGP();
-   aGP.ResizeTo( fptr->aGP.GetNoElements() );
-   aGP = fptr->aGP;
-
    // set event vector and minimize
    eventvec_fit = &eventvec;
+   hmbl_bkg = hmbl_bkg_temp;
+
    gMinuit->Minimize();
    gMinuit->Hesse();
 
@@ -281,7 +289,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
-   Shapes * fptr = new Shapes( hists_ );
+   Shapes * fptr = new Shapes( hmbl_bkg );
    fptr->aGP.ResizeTo( aGP.GetNoElements() );
    fptr->aGP = aGP;
    TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
@@ -290,15 +298,15 @@ double Fitter::Min2LL(const double *x){
    delete fmbl_tot;
    delete fptr;
 
-   Shapes shape( hists_ );
+   Shapes shape( hmbl_bkg );
    shape.aGP.ResizeTo( aGP.GetNoElements() );
    shape.aGP = aGP;
 
    double pmbl [] = {x[0], x[1], 1.0, integral};
    double m2ll = 0;
    // evaluate likelihood
-   for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++){
-      if( ev->process.compare("data") != 0 ) continue;
+   for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++ ){
+      if( !(ev->fit_event) ) continue;
 
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
          double val = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
@@ -311,7 +319,7 @@ double Fitter::Min2LL(const double *x){
    return m2ll;
 }
 
-void Fitter::PlotResults(){
+void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
    const double *xmin = gMinuit->X();
    const double *xerr = gMinuit->Errors();
@@ -351,7 +359,7 @@ void Fitter::PlotResults(){
       // pad 1
       pad1->cd();
 
-      TH1D *hdata = (TH1D*)hists_[names[i]]["data"]->Clone("hdata");
+      TH1D *hdata = (TH1D*)hists_[names[i]]["fitevts"]->Clone("fitevts");
       if( names[i].compare("mbl_fit") == 0 ){
          hdata->Rebin(4);
          hdata->GetYaxis()->SetTitle("Events/10 GeV");
@@ -369,8 +377,9 @@ void Fitter::PlotResults(){
       hdata->SetMarkerStyle(20);
       hdata->Draw();
 
-      Shapes * fptr = new Shapes( hists_ );
-      fptr->TrainGP();
+      Shapes * fptr = new Shapes( hmbl_bkg );
+      fptr->aGP.ResizeTo( aGP.GetNoElements() );
+      fptr->aGP = aGP;
       TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
 
       // normalization inside likelihood function (temp)
@@ -385,7 +394,7 @@ void Fitter::PlotResults(){
 
       // pad 2
       pad2->cd();
-      TH1D *hratio = (TH1D*)hists_[names[i]]["data"]->Clone("hratio");
+      TH1D *hratio = (TH1D*)hists_[names[i]]["fitevts"]->Clone("hratio");
       if( names[i].compare("mbl_fit") == 0 ) hratio->Rebin(4);
       hratio->Divide( ftemplate );
 
@@ -428,25 +437,31 @@ void Fitter::PlotResults(){
    double kmbl_lrange = xmin[1]-3*xerr[1];
    double kmbl_rrange = xmin[1]+3*xerr[1];
    
+   
    // mt profile
    TGraph *gLmt = new TGraph();
+   /*
    for(unsigned int i=0; i <= npnts_mt; i++){
       cout << "mt profile, pnt " << i << endl;
       double mt = mt_lrange + (mt_rrange-mt_lrange)*i/npnts_mt;
       const double par [] = {mt, xmin[1], xmin[2], xmin[3]};
       gLmt->SetPoint(i, mt, Min2LL(par) - minvalue);
    }
+   */
    // kmbl profile
    TGraph *gLkmbl = new TGraph();
+   /*
    for(unsigned int i=0; i <= npnts_kmbl; i++){
       cout << "kmbl profile, pnt " << i << endl;
       double kmbl = kmbl_lrange + (kmbl_rrange-kmbl_lrange)*i/npnts_kmbl;
       const double par [] = {xmin[0], kmbl, xmin[2], xmin[3]};
       gLkmbl->SetPoint(i, kmbl, Min2LL(par) - minvalue);
    }
+   */
    // kmbl vs mt
    TH2D *hLmbl = new TH2D("hLmbl", "hLmbl", npnts_mt, mt_lrange, mt_rrange,
          npnts_kmbl, kmbl_lrange, kmbl_rrange);
+         
    /*
    cout << "Generating 2d profile." << endl;
    for(unsigned int i=0; i <= npnts_mt; i++){

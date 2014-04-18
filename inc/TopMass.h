@@ -53,6 +53,9 @@ struct Event {
    // reconstructed objects
    TLorentzVector jet1, jet2, lep1, lep2, met;
 
+   // for fit
+   bool fit_event;
+
    Event(){
       process = "";
       type = "";
@@ -69,6 +72,8 @@ struct Event {
       mt2_220 = 0;
       mt2_210 = 0;
       mt2_221 = 0;
+
+      fit_event = false;
    }
 
 };
@@ -80,23 +85,24 @@ class Fitter{
       Fitter();
       ~Fitter();
 
-      void ReadNtuple(string, string, double, string, vector<Event>&);
+      void ReadNtuple(string, string, double, string, vector<Event>&, int=0);
       void LoadDatasets(map<string, Dataset>&);
       void GetVariables(vector<Event>&);
 
-      void RunMinimizer(vector<Event>&);
-      void PlotResults();
+      void RunMinimizer(vector<Event>&, TH1D*&);
+      void PlotResults(map< string, map<string, TH1D*> >&);
 
       ROOT::Minuit2::Minuit2Minimizer* gMinuit;
 
       // diagnostics
-      map< string, map<string, TH1D*> > hists_;
-      void DeclareHists();
-      void FillHists(vector<Event>&);
-      void PrintHists();
-      void PlotTemplates();
+      void DeclareHists( map< string, map<string, TH1D*> >&, string label );
+      void DeleteHists( map< string, map<string, TH1D*> >& );
+      void FillHists( map< string, map<string, TH1D*> >&, vector<Event>&, bool=false );
+      void PrintHists( map< string, map<string, TH1D*> >& );
+      void PlotTemplates( map< string, map<string, TH1D*> >& );
 
       TVectorD aGP;
+      TH1D* hmbl_bkg;
       
    private:
 

@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <string>
 #include <getopt.h>
@@ -38,6 +39,7 @@ int main(int argc, char* argv[]){
    int fitstatus=-1;
    double mt=0, mt_err=0;
    double kmbl=0, kmbl_err=0;
+   double mcmass=0;
    
    TTree *tree = new TTree("FitResults", "FitResults");
    tree->Branch("fitStatus", &fitstatus);
@@ -45,6 +47,7 @@ int main(int argc, char* argv[]){
    tree->Branch("mt_err", &mt_err);
    tree->Branch("kmbl", &kmbl);
    tree->Branch("kbml_err", &kmbl_err);
+   tree->Branch("mcmass", &mcmass);
 
 
    // option flags
@@ -111,10 +114,10 @@ int main(int argc, char* argv[]){
       if( do_diagnostics or use_data ){
          fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
                "RealData", eventvec_datamc );
-         if( name.compare("data") == 0 ){ // bkg control sample
-            fitter.ReadNtuple( dat->path+dat->file, name+"_bkgcontrol", dat->mc_xsec/dat->mc_nevts,
-                  "buBkg", eventvec_datamc );
-         }
+         // bkg control sample
+         fitter.ReadNtuple( dat->path+dat->file, name+"_bkgcontrol", dat->mc_xsec/dat->mc_nevts,
+               "buBkg", eventvec_datamc );
+
       }
 
       // events for training and testing
@@ -175,60 +178,81 @@ int main(int argc, char* argv[]){
                }
             }
          }
-      }else{
-         for( vector<Event>::iterator ev = eventvec_test.begin(); ev < eventvec_test.end(); ev++){
-            if(ev->type.find("ttbar181") != string::npos or ev->type.find("other") != string::npos ){
-               if( ev->type.find("bkgcontrol") == string::npos ){
-                  if( ev->type.find("signal") != string::npos )
-                     eventvec_fit.push_back(*ev);
-               }else{
-                  eventvec_fit_bkgcontrol.push_back(*ev);
+      }else{ // loop over mc masses
+
+         double masspnts [] = {161.5,163.5,166.5,169.5,172.5,175.5,178.5,181.5};
+         for(int i=0; i < 8; i++){
+
+            stringstream dstr;
+            dstr << floor(masspnts[i]);
+            string dname = "ttbar"+dstr.str();
+
+            // load events to be fitted
+            for( vector<Event>::iterator ev = eventvec_test.begin(); ev < eventvec_test.end(); ev++){
+               if( ev->type.find(dname) != string::npos or ev->type.find("other") != string::npos ){
+                  if( ev->type.find("bkgcontrol") == string::npos ){
+                     //if( ev->type.find("signal") != string::npos )
+                        eventvec_fit.push_back(*ev);
+                  }else{
+                     eventvec_fit_bkgcontrol.push_back(*ev);
+                  }
                }
             }
+
+            // flag events to be fitted
+            for( vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
+               ev->fit_event = true;
+            }
+            for( vector<Event>::iterator ev = eventvec_fit_bkgcontrol.begin();
+                  ev < eventvec_fit_bkgcontrol.end(); ev++){
+               ev->fit_event = true;
+            }
+
+            fitter.DeclareHists( hists_fit_, "fit" );
+            fitter.FillHists( hists_fit_, eventvec_fit, true );
+            fitter.DeclareHists( hists_fit_bkgcontrol_, "fit_bkgcontrol" );
+            fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
+
+            // do GP training
+            Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl_fit"]["fitevts"] );
+            fptr->TrainGP( hists_train_ );
+            fitter.aGP.ResizeTo( fptr->aGP.GetNoElements() );
+            fitter.aGP = fptr->aGP;
+
+            // events for fitting, hists for training
+            fitter.RunMinimizer( eventvec_fit, hists_fit_bkgcontrol_["mbl_fit"]["fitevts"] );
+            fitter.PlotResults( hists_fit_ ); // plot fitted events
+
+            fitter.PlotTemplates( hists_train_ );
+
+            // fill results tree
+            mcmass = masspnts[i];
+            fitstatus = fitter.gMinuit->Status();
+            const double *par = fitter.gMinuit->X();
+            const double *par_err = fitter.gMinuit->Errors();
+            mt = par[0];
+            kmbl = par[1];
+            mt_err = par_err[0];
+            kmbl_err = par_err[1];
+
+            tree->Fill();
+
+            eventvec_fit.clear();
+            eventvec_fit_bkgcontrol.clear();
+            fitter.DeleteHists( hists_fit_ );
+            fitter.DeleteHists( hists_fit_bkgcontrol_ );
+
          }
-      }
-      for( vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
-         ev->fit_event = true;
-      }
-      for( vector<Event>::iterator ev = eventvec_fit_bkgcontrol.begin();
-            ev < eventvec_fit_bkgcontrol.end(); ev++){
-         ev->fit_event = true;
+
       }
 
-      fitter.DeclareHists( hists_fit_, "fit" );
-      fitter.FillHists( hists_fit_, eventvec_fit, true );
-      fitter.DeclareHists( hists_fit_bkgcontrol_, "fit_bkgcontrol" );
-      fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
-
-      // do GP training
-      Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl_fit"]["fitevts"] );
-      fptr->TrainGP( hists_train_ );
-      fitter.aGP.ResizeTo( fptr->aGP.GetNoElements() );
-      fitter.aGP = fptr->aGP;
-
-      // events for fitting, hists for training
-      fitter.RunMinimizer( eventvec_fit, hists_fit_bkgcontrol_["mbl_fit"]["fitevts"] );
-      fitter.PlotResults( hists_fit_ ); // plot fitted events
-
-      fitter.PlotTemplates( hists_train_ );
    }
-
 
 
    //
    // write fit results
    //
    if( do_fit ){
-      fitstatus = fitter.gMinuit->Status();
-      const double *par = fitter.gMinuit->X();
-      const double *par_err = fitter.gMinuit->Errors();
-      mt = par[0];
-      kmbl = par[1];
-      mt_err = par_err[0];
-      kmbl_err = par_err[1];
-
-      tree->Fill();
-
       // set up output file path
       std::string pathstr;
       char* path = std::getenv("WORKING_DIR");

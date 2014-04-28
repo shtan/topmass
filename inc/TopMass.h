@@ -101,8 +101,12 @@ class Fitter{
       void PrintHists( map< string, map<string, TH1D*> >& );
       void PlotTemplates( map< string, map<string, TH1D*> >& );
 
-      TVectorD aGP;
+      TVectorD aGPsig;
+      TVectorD aGPbkg;
       TH1D* hmbl_bkg;
+
+      double rangembl;
+      bool compute_profile;
       
    private:
 

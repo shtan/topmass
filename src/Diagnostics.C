@@ -6,6 +6,7 @@
 #include "TH2.h"
 #include "TF1.h"
 #include "TGraph.h"
+#include "TGraphErrors.h"
 #include "THStack.h"
 #include "TLegend.h"
 #include "TLatex.h"
@@ -274,7 +275,15 @@ void Fitter::PrintHists( map< string, map<string, TH1D*> >& hists_ ){
    typedef map<string, TH1D*> tmap;
    typedef map<string, tmap> hmap;
 
-   TFile *fileout = new TFile( "results/plotsDataMC.root", "RECREATE" );
+   std::string pathstr;
+   char* path = std::getenv("WORKING_DIR");
+   if (path==NULL) {
+      pathstr = "./results";
+   }else {
+      pathstr = path;
+   }
+
+   TFile *fileout = new TFile( (pathstr+"/plotsDataMC.root").c_str(), "RECREATE" );
    fileout->cd();
 
    TDirectory *dall = fileout->mkdir( "all" );
@@ -570,7 +579,15 @@ void Fitter::PrintHists( map< string, map<string, TH1D*> >& hists_ ){
 
 void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
-   TFile *fileout = new TFile( "results/plotsTemplates.root", "RECREATE" );
+   std::string pathstr;
+   char* path = std::getenv("WORKING_DIR");
+   if (path==NULL) {
+      pathstr = "./results";
+   }else {
+      pathstr = path;
+   }
+
+   TFile *fileout = new TFile( (pathstr+"/plotsTemplates.root").c_str(), "RECREATE" );
    fileout->cd();
 
    // templates for all masses
@@ -654,15 +671,18 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             hmc->DrawCopy();
 
             Shapes * fptr = new Shapes( hmc_bkg );
-            fptr->aGP.ResizeTo( aGP.GetNoElements() );
-            fptr->aGP = aGP;
-            TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
+            fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
+            fptr->aGPsig = aGPsig;
+            fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
+            fptr->aGPbkg = aGPbkg;
+            TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
 
             // normalization inside likelihood function (temp)
-            ftemplate->SetParameters( masspnts[j], 1-k, 1.0, 1.0 );
-            double integral = (sb[k] == "sig") ? ftemplate->Integral(0,1000) : 1.0;
+            ftemplate->SetParameters( masspnts[j], 1-k, 1.0, 1.0, 1.0 );
+            double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,rangembl) : 1.0;
+            double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,rangembl) : 1.0;
             ftemplate->SetParameters( masspnts[j], 1-k,
-                  hmc->Integral("width"), integral );
+                  hmc->Integral("width"), integralsig, integralbkg );
 
             ftemplate->SetLineWidth(2);
             ftemplate->DrawCopy("same");
@@ -704,8 +724,96 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
       }
    }
    fileout->cd();
-
+   
+   // plot template as a function of top mass
    /*
+   TDirectory *dir = fileout->mkdir( "mtshape" );
+   dir->cd();
+   for(unsigned int k=0; k < sizeof(sb)/sizeof(sb[0]); k++){ // sig,bkg
+      for(double x=0; x <= rangembl; x+=10){ // bin of mbl
+
+         stringstream ssmbl;
+         ssmbl << x;
+         string smbl = ssmbl.str();
+
+         TCanvas *canvas = new TCanvas( ("c"+sb[k]+"_mbl"+smbl).c_str(),
+               ("c"+sb[k]+"_mbl"+smbl).c_str(), 800, 800);
+         canvas->SetFillColor(0);
+         canvas->cd();
+
+         // set bkg control sample (dummy)
+         TH1D *hmc_bkg;
+         hmc_bkg = (TH1D*)hists_["mbl"]["ttbar172_bkgcontrol_signal"]->Clone("hmc_bkg");
+         hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_mistag"] );
+         hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_taus"] );
+         hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_hadronic"] );
+         hmc_bkg->Add( hists_["mbl"]["other_bkgcontrol"] );
+
+         // graph with template value at mbl = x
+         TGraph *gtemplate = new TGraph();
+         Shapes * fptr = new Shapes( hmc_bkg );
+         fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
+         fptr->aGPsig = aGPsig;
+         fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
+         fptr->aGPbkg = aGPbkg;
+         TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+         int count=0;
+         for(double m=160.0; m <= 183.0; m+=1){ // value of mt
+            // normalization inside likelihood function (temp)
+            ftemplate->SetParameters( m, 1-k, 1.0, 1.0, 1.0 );
+            double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,rangembl) : 1.0;
+            double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,rangembl) : 1.0;
+            ftemplate->SetParameters( m, 1-k, 1.0, integralsig, integralbkg );
+
+            gtemplate->SetPoint(count, m, ftemplate->Eval(x));
+            count++;
+         }
+         gtemplate->SetTitle( TString("M_{bl} "+sb[k]+" shape @ mbl = "+smbl) );
+         gtemplate->SetLineColor(2);
+         gtemplate->SetLineWidth(2);
+
+         // now do the same at mc masspoints
+         TGraphErrors *gmc = new TGraphErrors();
+         count=0;
+         for(int j=0; j < 8; j++){
+            stringstream ssmass;
+            ssmass << floor(masspnts[j]);
+            string smass = ssmass.str();
+
+            TH1D *hmc;
+            if( sb[k] == "sig" ){
+               hmc = (TH1D*)hists_["mbl"]["ttbar"+smass+"_signal"]->Clone("hmc");
+            }else{
+               hmc = (TH1D*)hists_["mbl"]["ttbar"+smass+"_mistag"]->Clone("hmc");
+               hmc->Add( hists_["mbl"]["ttbar"+smass+"_taus"] );
+               hmc->Add( hists_["mbl"]["ttbar"+smass+"_hadronic"] );
+               hmc->Add( hists_["mbl"]["other"] );
+            }
+            hmc->Scale( 1.0/hmc->Integral("width") );
+
+            gmc->SetPoint(count, masspnts[j], hmc->GetBinContent(hmc->FindBin(x)) );
+            gmc->SetPointError(count, 0.0, hmc->GetBinError(hmc->FindBin(x)) );
+            count++;
+         }
+
+         gmc->SetMarkerStyle(20);
+
+         gtemplate->SetMinimum( min(gtemplate->GetMinimum(),gmc->GetMinimum()) );
+         gtemplate->SetMaximum( max(gtemplate->GetMaximum(),gmc->GetMaximum()) );
+         gtemplate->Draw("AC");
+         gmc->Draw("P");
+
+         canvas->Write();
+
+         delete canvas;
+         delete ftemplate;
+         delete fptr;
+      }
+   }
+*/
+   fileout->cd();
+
+   
    TCanvas *cmbl_signal = new TCanvas("cmbl_signal","M_{bl} Template",800,800);
    cmbl_signal->cd();
 
@@ -730,21 +838,34 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    mbl181->DrawCopy("same");
 
    // mbl likelihood
-   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 300, 4);
 
-   fmbl_tot->SetParameter(1, 1.0);
-   fmbl_tot->SetParameter(2, 1.0);
-   fmbl_tot->SetParameter(3, 1.0);
+   // set bkg control sample (dummy)
+   TH1D *hmc_bkg;
+   hmc_bkg = (TH1D*)hists_["mbl"]["ttbar172_bkgcontrol_signal"]->Clone("hmc_bkg");
+   hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_mistag"] );
+   hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_taus"] );
+   hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_hadronic"] );
+   hmc_bkg->Add( hists_["mbl"]["other_bkgcontrol"] );
 
-   fmbl_tot->SetParameter(0, 161.5);
+   Shapes * fptr = new Shapes( hmc_bkg );
+   fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
+   fptr->aGPsig = aGPsig;
+   fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
+   fptr->aGPbkg = aGPbkg;
+   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+
+   fmbl_tot->SetParameters( 161.5, 1.0, 1.0, 1.0, 1.0 );
+   fmbl_tot->SetParameters( 161.5, 1.0, 1.0, fmbl_tot->Integral(0,rangembl), 1.0 );
    fmbl_tot->SetLineColor(2);
    fmbl_tot->DrawCopy("same");
 
-   fmbl_tot->SetParameter(0, 172.5);
+   fmbl_tot->SetParameters( 172.5, 1.0, 1.0, 1.0, 1.0 );
+   fmbl_tot->SetParameters( 172.5, 1.0, 1.0, fmbl_tot->Integral(0,rangembl), 1.0 );
    fmbl_tot->SetLineColor(1);
    fmbl_tot->DrawCopy("same");
 
-   fmbl_tot->SetParameter(0, 181.5);
+   fmbl_tot->SetParameters( 181.5, 1.0, 1.0, 1.0, 1.0 );
+   fmbl_tot->SetParameters( 181.5, 1.0, 1.0, fmbl_tot->Integral(0,rangembl), 1.0 );
    fmbl_tot->SetLineColor(3);
    fmbl_tot->DrawCopy("same");
 
@@ -757,8 +878,10 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    lm->Draw("same");
 
    cmbl_signal->Write();
-*/
+
    fileout->Close();
+
+   delete fptr;
 
    return;
 }

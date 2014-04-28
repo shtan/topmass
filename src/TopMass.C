@@ -48,6 +48,11 @@ Fitter::Fitter(){
    gROOT->ProcessLineSync(".L scripts/tdrstyle.C");
    gROOT->ProcessLineSync("setTDRStyle()");
 
+   // fit range
+   rangembl = 300;
+
+   compute_profile = false;
+
 }
 
 Fitter::~Fitter(){
@@ -91,14 +96,14 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
    datasets[ "tbar_tw" ].mc_nevts    = 493460;
    datasets[ "t_tw" ].mc_nevts       = 497658;
    datasets[ "wjets" ].mc_nevts      = 57709905;
-   datasets[ "ttbar161" ].mc_nevts   = 6923750;
-   datasets[ "ttbar163" ].mc_nevts   = 6923750;
-   datasets[ "ttbar166" ].mc_nevts   = 6923750;
-   datasets[ "ttbar169" ].mc_nevts   = 6923750;
+   datasets[ "ttbar161" ].mc_nevts   = 5369214;
+   datasets[ "ttbar163" ].mc_nevts   = 5365348;
+   datasets[ "ttbar166" ].mc_nevts   = 4469095;
+   datasets[ "ttbar169" ].mc_nevts   = 5202817;
    datasets[ "ttbar172" ].mc_nevts   = 6923750;
-   datasets[ "ttbar175" ].mc_nevts   = 6923750;
-   datasets[ "ttbar178" ].mc_nevts   = 6923750;
-   datasets[ "ttbar181" ].mc_nevts   = 6923750;
+   datasets[ "ttbar175" ].mc_nevts   = 5186494;
+   datasets[ "ttbar178" ].mc_nevts   = 4733483;
+   datasets[ "ttbar181" ].mc_nevts   = 5145140;
 
    datasets[ "dy" ].mc_xsec          = 3351.97;
    datasets[ "ww" ].mc_xsec          = 54.838;
@@ -121,7 +126,6 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
       string selection, vector<Event>& eventvec, int opt ){
-   cout << "... " << process << endl;
    
    // declare variables
    TLorentzVector *jet1 = new TLorentzVector();
@@ -207,7 +211,11 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       }
       // physics backgrounds
       else if( process.find("ttbar") == string::npos ){
-         evtemp.type = "other";
+         if( process.find("bkgcontrol") == string::npos ){
+            evtemp.type = "other";
+         }else{
+            evtemp.type = "other_bkgcontrol";
+         }
       }
       // hadronic decays
       else if( fabs(lpPdgIdGEN) < 5 or fabs(lmPdgIdGEN) < 5
@@ -273,14 +281,16 @@ void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
 
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
    gMinuit->SetFunction( *fFunc );
-   gMinuit->SetVariable(0, "topMass", 173.0, 0.01);
-   gMinuit->SetLimitedVariable(1, "norm", 0.5, 0.01, 0, 1.0);
+   gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
+   gMinuit->SetLimitedVariable(1, "norm", 0.7, 0.1, 0, 1.0);
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
    hmbl_bkg = hmbl_bkg_temp;
 
+   cout << "\nFitting " << eventvec_fit->size() << " events." << endl;
    gMinuit->Minimize();
+   cout << "\nComputing Hessian." << endl;
    gMinuit->Hesse();
 
    return;
@@ -290,27 +300,34 @@ double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
    Shapes * fptr = new Shapes( hmbl_bkg );
-   fptr->aGP.ResizeTo( aGP.GetNoElements() );
-   fptr->aGP = aGP;
-   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
-   fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0 );
-   double integral = fmbl_tot->Integral(0,1000);
+   fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
+   fptr->aGPsig = aGPsig;
+   fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
+   fptr->aGPbkg = aGPbkg;
+   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+   fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0, 1.0 );
+   double integralsig = fmbl_tot->Integral(0,rangembl);
+   fmbl_tot->SetParameters( x[0], 0.0, 1.0, 1.0, 1.0 );
+   double integralbkg = fmbl_tot->Integral(0,rangembl);
    delete fmbl_tot;
    delete fptr;
 
    Shapes shape( hmbl_bkg );
-   shape.aGP.ResizeTo( aGP.GetNoElements() );
-   shape.aGP = aGP;
+   shape.aGPsig.ResizeTo( aGPsig.GetNoElements() );
+   shape.aGPsig = aGPsig;
+   shape.aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
+   shape.aGPbkg = aGPbkg;
 
-   double pmbl [] = {x[0], x[1], 1.0, integral};
+   double pmbl [] = {x[0], x[1], 1.0, integralsig, integralbkg};
    double m2ll = 0;
    // evaluate likelihood
    for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++ ){
       if( !(ev->fit_event) ) continue;
+      //if( (ev-eventvec_fit->begin()) % 8 != 1 ) continue;
 
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
+         if( ev->mbls[i] > rangembl ) continue;
          double val = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
-         if( val <= 0 ) val = 1E-10;
          m2ll -= 2.0*ev->weight*log( val );
       }
 
@@ -320,14 +337,30 @@ double Fitter::Min2LL(const double *x){
 }
 
 void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
+   cout << "Plotting fit results." << endl;
 
    const double *xmin = gMinuit->X();
    const double *xerr = gMinuit->Errors();
    double minvalue = gMinuit->MinValue();
 
    // plot fit results
-   TFile *fileout = new TFile( "results/plotsFitResults.root", "RECREATE" );
+   std::string pathstr;
+   char* path = std::getenv("WORKING_DIR");
+   if (path==NULL) {
+      pathstr = "./results";
+   }else {
+      pathstr = path;
+   }
+
+   TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
+
+   Shapes * fptr = new Shapes( hmbl_bkg );
+   fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
+   fptr->aGPsig = aGPsig;
+   fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
+   fptr->aGPbkg = aGPbkg;
+   TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
 
    string names [] = {"mbl","mbl_fit"};
    for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){
@@ -377,16 +410,13 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
       hdata->SetMarkerStyle(20);
       hdata->Draw();
 
-      Shapes * fptr = new Shapes( hmbl_bkg );
-      fptr->aGP.ResizeTo( aGP.GetNoElements() );
-      fptr->aGP = aGP;
-      TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, 1000, 4);
-
       // normalization inside likelihood function (temp)
-      ftemplate->SetParameters( xmin[0], 1.0, 1.0, 1.0 );
-      double integral = ftemplate->Integral(0,1000);
+      ftemplate->SetParameters( xmin[0], 1.0, 1.0, 1.0, 1.0 );
+      double integralsig = ftemplate->Integral(0,rangembl);
+      ftemplate->SetParameters( xmin[0], 0.0, 1.0, 1.0, 1.0 );
+      double integralbkg = ftemplate->Integral(0,rangembl);
       ftemplate->SetParameters( xmin[0], xmin[1],
-            hdata->Integral("width"), integral );
+            hdata->Integral("width"), integralsig, integralbkg );
 
       ftemplate->SetLineWidth(2);
       ftemplate->DrawCopy("same");
@@ -423,56 +453,74 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
       delete canvas;
       delete func;
-      delete fptr;
-      delete ftemplate;
    }
 
    //
    // plot likelihood near minimum
    //
-   unsigned int npnts_mt = 30;
-   unsigned int npnts_kmbl = 30;
+   unsigned int npnts_mt = 10;
+   unsigned int npnts_kmbl = 10;
    double mt_lrange = xmin[0]-3*xerr[0];
    double mt_rrange = xmin[0]+3*xerr[0];
    double kmbl_lrange = xmin[1]-3*xerr[1];
    double kmbl_rrange = xmin[1]+3*xerr[1];
    
-   
    // mt profile
    TGraph *gLmt = new TGraph();
-   /*
-   for(unsigned int i=0; i <= npnts_mt; i++){
-      cout << "mt profile, pnt " << i << endl;
-      double mt = mt_lrange + (mt_rrange-mt_lrange)*i/npnts_mt;
-      const double par [] = {mt, xmin[1], xmin[2], xmin[3]};
-      gLmt->SetPoint(i, mt, Min2LL(par) - minvalue);
+   
+   if( compute_profile ){
+      for(unsigned int i=0; i <= npnts_mt; i++){
+         cout << "mt profile, pnt " << i << endl;
+         double mt = mt_lrange + (mt_rrange-mt_lrange)*i/npnts_mt;
+
+         // normalization inside likelihood function (temp)
+         ftemplate->SetParameters( mt, 1.0, 1.0, 1.0, 1.0 );
+         double integralsig = ftemplate->Integral(0,rangembl);
+         ftemplate->SetParameters( mt, 0.0, 1.0, 1.0, 1.0 );
+         double integralbkg = ftemplate->Integral(0,rangembl);
+         ftemplate->SetParameters( mt, xmin[1], 1.0, integralsig, integralbkg );
+
+         const double par [] = {mt, xmin[1], 1.0, integralsig, integralbkg};
+         gLmt->SetPoint(i, mt, Min2LL(par) - minvalue);
+      }
    }
-   */
+   
    // kmbl profile
    TGraph *gLkmbl = new TGraph();
-   /*
-   for(unsigned int i=0; i <= npnts_kmbl; i++){
-      cout << "kmbl profile, pnt " << i << endl;
-      double kmbl = kmbl_lrange + (kmbl_rrange-kmbl_lrange)*i/npnts_kmbl;
-      const double par [] = {xmin[0], kmbl, xmin[2], xmin[3]};
-      gLkmbl->SetPoint(i, kmbl, Min2LL(par) - minvalue);
+   
+   if( compute_profile ){
+      for(unsigned int i=0; i <= npnts_kmbl; i++){
+         cout << "kmbl profile, pnt " << i << endl;
+         double kmbl = kmbl_lrange + (kmbl_rrange-kmbl_lrange)*i/npnts_kmbl;
+
+         // normalization inside likelihood function (temp)
+         ftemplate->SetParameters( xmin[0], 1.0, 1.0, 1.0, 1.0 );
+         double integralsig = ftemplate->Integral(0,rangembl);
+         ftemplate->SetParameters( xmin[0], 0.0, 1.0, 1.0, 1.0 );
+         double integralbkg = ftemplate->Integral(0,rangembl);
+         ftemplate->SetParameters( xmin[0], kmbl, 1.0, integralsig, integralbkg );
+
+         const double par [] = {xmin[0], kmbl, 1.0, integralsig, integralbkg};
+         gLkmbl->SetPoint(i, kmbl, Min2LL(par) - minvalue);
+      }
    }
-   */
+   
    // kmbl vs mt
    TH2D *hLmbl = new TH2D("hLmbl", "hLmbl", npnts_mt, mt_lrange, mt_rrange,
          npnts_kmbl, kmbl_lrange, kmbl_rrange);
-         
-   /*
-   cout << "Generating 2d profile." << endl;
-   for(unsigned int i=0; i <= npnts_mt; i++){
-      for(unsigned int j=0; j <= npnts_kmbl; j++){
-         double mt = hLmbl->GetXaxis()->GetBinCenter(i);
-         double kmbl = hLmbl->GetYaxis()->GetBinCenter(j);
-         const double par [] = {mt, kmbl, xmin[2], xmin[3]};
-         hLmbl->SetBinContent(i, j, Min2LL(par) - minvalue);
+
+   if( compute_profile ){ 
+      cout << "Generating 2d profile." << endl;
+      for(unsigned int i=0; i <= npnts_mt; i++){
+         for(unsigned int j=0; j <= npnts_kmbl; j++){
+            double mt = hLmbl->GetXaxis()->GetBinCenter(i);
+            double kmbl = hLmbl->GetYaxis()->GetBinCenter(j);
+            const double par [] = {mt, kmbl, xmin[2], xmin[3]};
+            hLmbl->SetBinContent(i, j, Min2LL(par) - minvalue);
+         }
       }
    }
-*/
+
    TCanvas *cLmt = new TCanvas("cLmt", "cLmt", 800, 800);
    cLmt->cd();
    gLmt->SetMarkerStyle(20);
@@ -490,6 +538,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    hLmbl->Draw("colz");
    cLmbl->Write("cLmbl");
 
+   
    /*
    // 2 sigma contour
    unsigned int npnts_contour = 100;
@@ -512,6 +561,9 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    */
 
    fileout->Close();
+
+   delete fptr;
+   delete ftemplate;
 
    return;
 }

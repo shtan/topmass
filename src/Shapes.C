@@ -26,7 +26,6 @@ Shapes::Shapes( TH1D *&hmbl_bkg_temp ){
    lmbl = 25.0;
    lmass = 3.0;
    gnorm = 1.0;
-   gnoise = 1.0E-05;
    int ntrain = 100;
    //double rtrain = 1000;
    double rtrain = 300;
@@ -87,7 +86,7 @@ double Shapes::Fmbl_sig_gp(double x, double mt){
    for(unsigned int i=0; i < ptrain.size(); i++){
       for(int j=0; j < nmasses; j++){
          fgp += aGPsig[i+j*ptrain.size()]
-            *GPkern( x, ptrain[i], lmbl, mt, masspnts[j], lmass, gnorm, gnoise );
+            *GPkern( x, ptrain[i], lmbl, mt, masspnts[j], lmass, gnorm );
       }
    }
 
@@ -103,7 +102,7 @@ double Shapes::Fmbl_bkg_gp(double x, double mt){
    for(unsigned int i=0; i < ptrain.size(); i++){
       for(int j=0; j < nmasses; j++){
          fgp += aGPbkg[i+j*ptrain.size()]
-            *GPkern( x, ptrain[i], lmbl, mt, masspnts[j], lmass, gnorm, gnoise );
+            *GPkern( x, ptrain[i], lmbl, mt, masspnts[j], lmass, gnorm );
       }
    }
 
@@ -116,10 +115,9 @@ double Shapes::Fmbl_bkg(double x){
 }
 
 double Shapes::GPkern(double x1, double x2, double lx, double m1, double m2, double lm,
-      double norm, double noise){
+      double norm){
 
-   double delta = (x1==x2 and m1==m2) ? 1.0 : 0.0;
-   double kernel = norm*exp(-0.5*(pow( (x1-x2)/lx, 2)+pow( (m1-m2)/lm, 2))) + noise*delta;
+   double kernel = norm*exp(-0.5*(pow( (x1-x2)/lx, 2)+pow( (m1-m2)/lm, 2)));
    return kernel;
 }
 
@@ -162,7 +160,7 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
          int imass = i / ntrain;
          int jmass = j / ntrain;
          K[i][j] = GPkern( ptrain[im], ptrain[jm], lmbl, masspnts[imass], masspnts[jmass], lmass,
-              gnorm, gnoise );
+              gnorm );
      }
    }
    // compute noise matrix
@@ -176,8 +174,8 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
       double binerr_bkg = hgp_bkg[imass]->GetBinError( hgp_bkg[imass]->FindBin(ptrain[im]) );
       for(int j=0; j < ntrain*nmasses; j++){
          if( i==j ){
-            Nsig[i][j] = 1E06*binerr_sig*binerr_sig;//pow( max(binerr_sig,0.001), 2 );
-            Nbkg[i][j] = 1E06*binerr_bkg*binerr_bkg;//pow( max(binerr_bkg,0.001), 2 );
+            Nsig[i][j] = pow( max(binerr_sig,0.001), 2 );
+            Nbkg[i][j] = pow( max(binerr_bkg,0.001), 2 );
          }else{
             Nsig[i][j] = 0;
             Nbkg[i][j] = 0;

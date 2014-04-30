@@ -389,12 +389,13 @@ int main(int argc, char* argv[]){
             return 0;
             */
             
+            fitter.PlotTemplates( hists_train_ );
+            return 0;
 
             // events for fitting, hists for training
             fitter.RunMinimizer( eventvec_fit, hists_fit_bkgcontrol_["mbl"]["fitevts"] );
             fitter.PlotResults( hists_fit_ ); // plot fitted events
 
-            fitter.PlotTemplates( hists_train_ );
 
             // fill results tree
             mcmass = mass;

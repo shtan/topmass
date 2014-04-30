@@ -23,13 +23,13 @@ class Shapes{
       double Fmbl_bkg(double);
 
 
-      double lmbl, lmass, gnorm, gnoise;
+      double lmbl, lmass, gnorm;
       vector<double> ptrain;
       TVectorD aGPsig;
       TVectorD aGPbkg;
       void SetGPopts();
       void TrainGP( map< string, map<string, TH1D*> >& );
-      double GPkern(double, double, double, double, double, double, double, double);
+      double GPkern(double, double, double, double, double, double, double);
 
       //map< string, map<string, TH1D*> > hists_; // copy from TopMass class
 

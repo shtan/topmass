@@ -1,6 +1,8 @@
 #include "Shapes.h"
 
 #include "TH1.h"
+#include "TGraph.h"
+#include "TGraphErrors.h"
 #include "TMath.h"
 
 #include <cmath>
@@ -30,7 +32,25 @@ Shapes::Shapes( TH1D *&hmbl_bkg_temp ){
    int ntrain = 100;
    //double rtrain = 1000;
    double rtrain = 300;
-   for(int i=0; i < ntrain; i++) ptrain.push_back( (i+0.5)*rtrain/ntrain );
+   ptrain.push_back(0);
+   //for(int i=0; i < ntrain; i++) ptrain.push_back( (i+0.5)*rtrain/ntrain );
+   double x = 1.5;
+   while( x < 180 ){
+      ptrain.push_back(x);
+      x+=3;
+   }
+   ptrain.push_back(187.5);
+   ptrain.push_back(202.5);
+   ptrain.push_back(217.5);
+   ptrain.push_back(232.5);
+   ptrain.push_back(247.5);
+   ptrain.push_back(262.5);
+   ptrain.push_back(277.5);
+   ptrain.push_back(292.5);
+   //ptrain.push_back(195);
+   //ptrain.push_back(225);
+   //ptrain.push_back(255);
+   //ptrain.push_back(285);
 
 }
 
@@ -127,7 +147,6 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
 
    double masspnts [] = {161.5, 163.5, 166.5, 169.5, 172.5, 175.5, 178.5, 181.5};
    int nmasses = 8;
-   int ntrain = ptrain.size();
 
    // histograms
    vector<TH1D*> hgp_sig;
@@ -138,6 +157,16 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
       ssmass << floor(masspnts[i]);
       string smass = ssmass.str();
 
+      // TEMP modify sig shape
+      /*
+      int bin = hists_["mbl"]["ttbar"+smass+"_signal"]->FindBin(170.0);
+      double val = hists_["mbl"]["ttbar"+smass+"_signal"]->GetBinContent(bin);
+      for(int x=bin; x <= hists_["mbl"]["ttbar"+smass+"_signal"]->GetNbinsX(); x++)
+         hists_["mbl"]["ttbar"+smass+"_signal"]->SetBinContent(x,val*exp(-0.15*(x-bin)));
+         */
+      //hists_["mbl"]["ttbar"+smass+"_signal"]->Rebin(10);
+      // TEMP modify sig shape
+      
       // signal shape
       hgp_sig.push_back( (TH1D*)hists_["mbl"]["ttbar"+smass+"_signal"]
             ->Clone( ("hgp_sig"+smass).c_str()) );
@@ -152,6 +181,79 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
       hgp_bkg[i]->Scale( 1.0/hgp_bkg[i]->Integral("width") );
 
    }
+
+   // define TGraphs for training (variable bin size)
+   //for(int b=0; b <= hgp_sig[0]->GetNbinsX(); b++){
+   //   cout << b << ": [" << hgp_sig[0]->GetBinLowEdge(b)
+   //      << ", " << hgp_sig[0]->GetBinLowEdge(b)+hgp_sig[0]->GetBinWidth(b) << "]" << endl;
+   //}
+   
+   vector<TGraphErrors*> ggp_sig;
+   vector<TGraphErrors*> ggp_bkg;
+   for(int sb=0; sb < 2; sb++){
+      for(int i=0; i < nmasses; i++){
+
+         // get histogram
+         TH1D* htemp;
+         if( sb==0 ) htemp = (TH1D*)hgp_sig[i]->Clone("htemp");
+         if( sb==1 ) htemp = (TH1D*)hgp_bkg[i]->Clone("htemp");
+
+         TGraphErrors *gtemp = new TGraphErrors();
+         gtemp->SetPoint(0, 0.0, 0.0);
+         gtemp->SetPointError(0, 0.0, htemp->GetBinError(1));
+         int pnt = 1;
+         for(int b=1; b <= htemp->GetNbinsX(); b++){
+            if( htemp->GetBinCenter(b) < 180.0 ){
+               gtemp->SetPoint(pnt, htemp->GetBinCenter(b), htemp->GetBinContent(b));
+               gtemp->SetPointError(pnt, 0.0, htemp->GetBinError(b));
+               pnt++;
+               //cout << b << ": [" << htemp->GetBinLowEdge(b)
+               //   << ", " << htemp->GetBinLowEdge(b)+htemp->GetBinWidth(b) << "]" << endl;
+            }
+         }
+         // now take care of tail bins
+         int firstbin = htemp->FindBin(180);
+         int numbins = htemp->GetNbinsX() - firstbin + 1;
+         int grpsize = numbins / 8;
+         for(int j=0; j < 8; j++){
+            double cent = 0;
+            double val = 0;
+            double errsq = 0;
+            int begin = firstbin + j*grpsize;
+            int count = 0;
+            for(int b = begin; b < begin + grpsize; b++){
+               cent += htemp->GetBinCenter(b);
+               val += htemp->GetBinContent(b);
+               errsq += pow(htemp->GetBinError(b),2);
+               count++;
+               cout << b << "(" << j << "): [" << htemp->GetBinLowEdge(b)
+                  << ", " << htemp->GetBinLowEdge(b)+htemp->GetBinWidth(b) << "]" << endl;
+            }
+            cent /= count;
+            val /= count;
+            errsq /= count*count;
+            cout << "***** (cent, val) = " << cent << ", " << val << endl;
+            gtemp->SetPoint(pnt, cent, val);
+            gtemp->SetPointError(pnt, 0.0, sqrt(errsq));
+            pnt++;
+         }
+
+         if( sb==0 ) ggp_sig.push_back( gtemp );
+         if( sb==1 ) ggp_bkg.push_back( gtemp );
+
+         delete htemp;
+      }
+   }
+
+   // set training point locations
+   double xtemp, ytemp;
+   for(int i=0; i < ggp_sig[0]->GetN(); i++){
+      ggp_sig[0]->GetPoint(i,xtemp,ytemp);
+      //ptrain.push_back( xtemp );
+      if( ptrain[i] != xtemp ) cout << "ERROR IN PTRAIN PNTS" << endl;
+   }
+   int ntrain = ptrain.size();
+   
 
    // compute covariance matrix
    TMatrixD K(ntrain*nmasses,ntrain*nmasses);
@@ -172,15 +274,15 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
    for(int i=0; i < ntrain*nmasses; i++){
       int im = i % ntrain;
       int imass = i / ntrain;
-      double binerr_sig = hgp_sig[imass]->GetBinError( hgp_sig[imass]->FindBin(ptrain[im]) );
-      double binerr_bkg = hgp_bkg[imass]->GetBinError( hgp_bkg[imass]->FindBin(ptrain[im]) );
+      double binerr_sig = ggp_sig[imass]->GetErrorY( im );
+      double binerr_bkg = ggp_bkg[imass]->GetErrorY( im );
       for(int j=0; j < ntrain*nmasses; j++){
          if( i==j ){
-            Nsig[i][j] = 1E06*binerr_sig*binerr_sig;//pow( max(binerr_sig,0.001), 2 );
-            Nbkg[i][j] = 1E06*binerr_bkg*binerr_bkg;//pow( max(binerr_bkg,0.001), 2 );
+            Nsig[i][j] = binerr_sig*binerr_sig;//pow( max(binerr_sig,0.001), 2 );
+            Nbkg[i][j] = binerr_bkg*binerr_bkg;//pow( max(binerr_bkg,0.001), 2 );
          }else{
-            Nsig[i][j] = 0;
-            Nbkg[i][j] = 0;
+            Nsig[i][j] = 0.0;
+            Nbkg[i][j] = 0.0;
          }
      }
    }
@@ -199,8 +301,11 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
    for(int i=0; i < ntrain*nmasses; i++){
       int im = i % ntrain;
       int imass = i / ntrain;
-      ysig[i] = hgp_sig[imass]->GetBinContent( hgp_sig[imass]->FindBin(ptrain[im]) );
-      ybkg[i] = hgp_bkg[imass]->GetBinContent( hgp_bkg[imass]->FindBin(ptrain[im]) );
+      ggp_sig[imass]->GetPoint(im, xtemp, ytemp);
+      ysig[i] = ytemp;
+      //cout << x << ", " << y << endl;
+      ggp_bkg[imass]->GetPoint(im, xtemp, ytemp);
+      ybkg[i] = ytemp;
    }
 
    // alpha vector
@@ -209,5 +314,10 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
 
    aGPbkg.ResizeTo( ntrain*nmasses );
    aGPbkg = Abkg*ybkg;
+
+   //for(int i=0; i < nmasses; i++){
+   //   delete ggp_sig[i];
+   //   delete ggp_bkg[i];
+   //}
    
 }

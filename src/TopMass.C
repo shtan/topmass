@@ -50,8 +50,14 @@ Fitter::Fitter(){
 
    // fit range
    rangembl = 300;
+   lbnd = 0;
+   rbnd = 0;
 
    compute_profile = false;
+
+   // gaussian process length scales
+   gplength_mbl = 25;
+   gplength_mt = 3;
 
 }
 
@@ -276,7 +282,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
    //gMinuit->SetTolerance(0.001);
-   gMinuit->SetTolerance(0.01);
+   //gMinuit->SetTolerance(0.1);
    gMinuit->SetPrintLevel(3);
 
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
@@ -299,7 +305,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
 double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
-   Shapes * fptr = new Shapes( hmbl_bkg );
+   Shapes * fptr = new Shapes( hmbl_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -312,7 +318,7 @@ double Fitter::Min2LL(const double *x){
    delete fmbl_tot;
    delete fptr;
 
-   Shapes shape( hmbl_bkg );
+   Shapes shape( hmbl_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
    shape.aGPsig.ResizeTo( aGPsig.GetNoElements() );
    shape.aGPsig = aGPsig;
    shape.aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -327,6 +333,7 @@ double Fitter::Min2LL(const double *x){
 
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
          if( ev->mbls[i] > rangembl ) continue;
+         if( ev->mbls[i] > lbnd and ev->mbls[i] < rbnd ) continue;
          double val = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
          m2ll -= 2.0*ev->weight*log( val );
       }
@@ -355,7 +362,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
 
-   Shapes * fptr = new Shapes( hmbl_bkg );
+   Shapes * fptr = new Shapes( hmbl_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -421,6 +428,18 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
       ftemplate->SetLineWidth(2);
       ftemplate->DrawCopy("same");
       hdata->DrawCopy("same"); // redraw points
+
+      double chi2 = 0;
+      if( i==0 ){
+         for(int n=0; n <= hdata->GetNbinsX(); n++){
+            double bincontent = hdata->GetBinContent(n);
+            double binerr = hdata->GetBinError(n);
+            double feval = ftemplate->Eval(hdata->GetBinCenter(n));
+            if( binerr == 0 ) binerr = 1;
+            chi2 += pow( (bincontent-feval)/binerr, 2);
+         }
+         fitchi2 = chi2;
+      }
 
       // pad 2
       pad2->cd();
@@ -509,7 +528,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TH2D *hLmbl = new TH2D("hLmbl", "hLmbl", npnts_mt, mt_lrange, mt_rrange,
          npnts_kmbl, kmbl_lrange, kmbl_rrange);
 
-   if( compute_profile ){ 
+   if( false and compute_profile ){ 
       cout << "Generating 2d profile." << endl;
       for(unsigned int i=0; i <= npnts_mt; i++){
          for(unsigned int j=0; j <= npnts_kmbl; j++){

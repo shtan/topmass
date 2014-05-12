@@ -43,6 +43,11 @@ int main(int argc, char* argv[]){
    double mt=0, mt_err=0;
    double kmbl=0, kmbl_err=0;
    double mcmass=0;
+   double fitchi2=0;
+   double gplength_mbl=0;
+   double gplength_mt=0;
+   double lbound_mbl=0;
+   double rbound_mbl=0;
    
    TTree *tree = new TTree("FitResults", "FitResults");
    tree->Branch("fitStatus", &fitstatus);
@@ -51,6 +56,11 @@ int main(int argc, char* argv[]){
    tree->Branch("kmbl", &kmbl);
    tree->Branch("kbml_err", &kmbl_err);
    tree->Branch("mcmass", &mcmass);
+   tree->Branch("fitchi2", &fitchi2);
+   tree->Branch("gplength_mbl", &gplength_mbl);
+   tree->Branch("gplength_mt", &gplength_mt);
+   tree->Branch("lbound_mbl", &lbound_mbl);
+   tree->Branch("rbound_mbl", &rbound_mbl);
 
 
    // option flags
@@ -59,18 +69,24 @@ int main(int argc, char* argv[]){
    int do_diagnostics = 0;
    int use_data = 0;
    float masspnt = 0;
+   float lengthscale_mbl = 25;
+   float lengthscale_mt = 3;
 
    struct option longopts[] = {
       { "fit",          no_argument,         &do_fit,          'f' },
       { "diagnostics",  no_argument,         &do_diagnostics,  'd' },
       { "data",         no_argument,         &use_data,        'a' },
-      { "masspnt",      required_argument,   0,                'm' },
       { "profile",      no_argument,         0,                'p' },
+      { "masspnt",      required_argument,   0,                'm' },
+      { "lmbl",         required_argument,   0,                'b' },
+      { "lmt",          required_argument,   0,                't' },
+      { "lbnd",         required_argument,   0,                'l' },
+      { "rbnd",         required_argument,   0,                'r' },
       { "help",         no_argument,         NULL,             'h' },
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdahpm:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdahpm:b:t:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'f' :
@@ -87,6 +103,22 @@ int main(int argc, char* argv[]){
 
          case 'm' :
             masspnt = atof(optarg);
+            break;
+
+         case 'b' :
+            lengthscale_mbl = atof(optarg);
+            break;
+
+         case 't' :
+            lengthscale_mt = atof(optarg);
+            break;
+
+         case 'l' :
+            fitter.lbnd = atof(optarg);
+            break;
+
+         case 'r' :
+            fitter.rbnd = atof(optarg);
             break;
 
          case 'p' :
@@ -116,6 +148,8 @@ int main(int argc, char* argv[]){
       }
    }
 
+   fitter.gplength_mbl = lengthscale_mbl;
+   fitter.gplength_mt = lengthscale_mt;
 
    fitter.LoadDatasets( datasets );
 
@@ -240,7 +274,8 @@ int main(int argc, char* argv[]){
          cout << "wgt = " << wgt << endl;
 
          // do GP training
-         Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl"]["fitevts"] );
+         Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl"]["fitevts"],
+              fitter.gplength_mbl, fitter.gplength_mt, fitter.lbnd, fitter.rbnd );
          fptr->TrainGP( hists_train_ );
          fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
          fitter.aGPsig = fptr->aGPsig;
@@ -262,7 +297,6 @@ int main(int argc, char* argv[]){
          */
 
          fitter.PlotTemplates( hists_train_ );
-         return 0;
 
          // events for fitting, hists for training
          fitter.RunMinimizer( eventvec_fit, hists_fit_bkgcontrol_["mbl"]["fitevts"] );
@@ -277,6 +311,7 @@ int main(int argc, char* argv[]){
          kmbl = par[1];
          mt_err = par_err[0];
          kmbl_err = par_err[1];
+         fitchi2 = fitter.fitchi2;
 
          tree->Fill();
 
@@ -368,7 +403,8 @@ int main(int argc, char* argv[]){
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
             // do GP training
-            Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl"]["fitevts"] );
+            Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl"]["fitevts"],
+                 fitter.gplength_mbl, fitter.gplength_mt, fitter.lbnd, fitter.rbnd );
             fptr->TrainGP( hists_train_ );
             fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
             fitter.aGPsig = fptr->aGPsig;
@@ -389,12 +425,23 @@ int main(int argc, char* argv[]){
             return 0;
             */
             
+            typedef map<string, TH1D*> tmap;
+            typedef map<string, tmap> hmap;
+            for( hmap::iterator h = hists_train_.begin(); h != hists_train_.end(); h++){
+               for( tmap::iterator t = h->second.begin(); t != h->second.end(); t++){
+                  for(int n=1; n < t->second->GetNbinsX(); n++){
+                     if( t->second->GetBinContent(n) == 0 )
+                        t->second->SetBinError(n, 1.0/35000);
+                  }
+               }
+            }
             fitter.PlotTemplates( hists_train_ );
-            return 0;
 
             // events for fitting, hists for training
             fitter.RunMinimizer( eventvec_fit, hists_fit_bkgcontrol_["mbl"]["fitevts"] );
             fitter.PlotResults( hists_fit_ ); // plot fitted events
+
+            cout << "Fit Chi2 = " << fitter.fitchi2 << endl;
 
 
             // fill results tree
@@ -406,6 +453,11 @@ int main(int argc, char* argv[]){
             kmbl = par[1];
             mt_err = par_err[0];
             kmbl_err = par_err[1];
+            fitchi2 = fitter.fitchi2;
+            gplength_mbl = lengthscale_mbl;
+            gplength_mt = lengthscale_mt;
+            lbound_mbl = fitter.lbnd;
+            rbound_mbl = fitter.rbnd;
 
             tree->Fill();
 

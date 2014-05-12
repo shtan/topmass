@@ -667,22 +667,25 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             hmc->GetXaxis()->SetTitleFont(42);
             hmc->GetYaxis()->SetTitleFont(42);
 
+            hmc->Scale(1.0/hmc->Integral("width"));
+
             hmc->SetMarkerStyle(20);
             hmc->DrawCopy();
 
-            Shapes * fptr = new Shapes( hmc_bkg );
+            Shapes * fptr = new Shapes( hmc_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
             fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
             fptr->aGPsig = aGPsig;
             fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
             fptr->aGPbkg = aGPbkg;
             TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+            ftemplate->SetNpx(500);
 
             // normalization inside likelihood function (temp)
             ftemplate->SetParameters( masspnts[j], 1-k, 1.0, 1.0, 1.0 );
             double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,rangembl) : 1.0;
             double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,rangembl) : 1.0;
             ftemplate->SetParameters( masspnts[j], 1-k,
-                  hmc->Integral("width"), integralsig, integralbkg );
+                  1.0/*hmc->Integral("width")*/, integralsig, integralbkg );
 
             ftemplate->SetLineWidth(2);
             ftemplate->DrawCopy("same");
@@ -726,7 +729,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    fileout->cd();
    
    // plot template as a function of top mass
-   /*
+   
    TDirectory *dir = fileout->mkdir( "mtshape" );
    dir->cd();
    for(unsigned int k=0; k < sizeof(sb)/sizeof(sb[0]); k++){ // sig,bkg
@@ -751,14 +754,14 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
          // graph with template value at mbl = x
          TGraph *gtemplate = new TGraph();
-         Shapes * fptr = new Shapes( hmc_bkg );
+         Shapes * fptr = new Shapes( hmc_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
          fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
          fptr->aGPsig = aGPsig;
          fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
          fptr->aGPbkg = aGPbkg;
          TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
          int count=0;
-         for(double m=160.0; m <= 183.0; m+=1){ // value of mt
+         for(double m=160.0; m <= 183.0; m+=0.5){ // value of mt
             // normalization inside likelihood function (temp)
             ftemplate->SetParameters( m, 1-k, 1.0, 1.0, 1.0 );
             double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,rangembl) : 1.0;
@@ -798,10 +801,11 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
          gmc->SetMarkerStyle(20);
 
-         gtemplate->SetMinimum( min(gtemplate->GetMinimum(),gmc->GetMinimum()) );
-         gtemplate->SetMaximum( max(gtemplate->GetMaximum(),gmc->GetMaximum()) );
-         gtemplate->Draw("AC");
-         gmc->Draw("P");
+         gmc->SetMinimum( min(gtemplate->GetMinimum(),gmc->GetMinimum()) );
+         gmc->SetMaximum( max(gtemplate->GetMaximum(),gmc->GetMaximum()) );
+         gmc->Draw("AEP");
+         gtemplate->Draw("same C");
+         gmc->Draw("EP");
 
          canvas->Write();
 
@@ -810,7 +814,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
          delete fptr;
       }
    }
-*/
+
    fileout->cd();
 
    
@@ -847,7 +851,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_hadronic"] );
    hmc_bkg->Add( hists_["mbl"]["other_bkgcontrol"] );
 
-   Shapes * fptr = new Shapes( hmc_bkg );
+   Shapes * fptr = new Shapes( hmc_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );

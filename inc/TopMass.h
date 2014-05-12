@@ -106,7 +106,11 @@ class Fitter{
       TH1D* hmbl_bkg;
 
       double rangembl;
+      double rbnd, lbnd;
       bool compute_profile;
+      double fitchi2;
+      double gplength_mbl;
+      double gplength_mt;
       
    private:
 

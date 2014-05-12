@@ -15,7 +15,8 @@ using namespace std;
 // constructor and destructor
 //
 
-Shapes::Shapes( TH1D *&hmbl_bkg_temp ){
+Shapes::Shapes( TH1D *&hmbl_bkg_temp, double gplength_mbl, double gplength_mt,
+     double lbound_mbl, double rbound_mbl ){
 
    //hists_ = temphists_;
    //hmbl_bkg = (TH1D*)hists_["mbl_fit"]["data_bkgcontrol"]->Clone("hmbl_bkg");
@@ -23,8 +24,10 @@ Shapes::Shapes( TH1D *&hmbl_bkg_temp ){
    norm_mbl_bkg = hmbl_bkg->Integral("width");
 
    // GP options
-   lmbl = 25.0;
-   lmass = 3.0;
+   lmbl = gplength_mbl;
+   lmass = gplength_mt;
+   lbmbl = lbound_mbl;
+   rbmbl = rbound_mbl;
    gnorm = 1.0;
    int ntrain = 100;
    //double rtrain = 1000;
@@ -53,7 +56,7 @@ double Shapes::Fmbl_tot(double *px, double *pp){
    //return norm*(k*Fmbl_sig_param(x, mt)/integral + (1-k)*Fmbl_bkg(x));
    //return norm*(k*Fmbl_sig_gp(x, mt)/integralsig + (1-k)*Fmbl_bkg(x));
    double val = norm*(k*Fmbl_sig_gp(x, mt)/integralsig + (1-k)*Fmbl_bkg_gp(x, mt)/integralbkg);
-   if( val <= 0 ) return 1E-10;
+   if( val <= 0 or (x > lbmbl and x < rbmbl) ) return 1E-10;
    else return val;
 }
 

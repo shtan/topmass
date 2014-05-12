@@ -13,7 +13,7 @@ class Shapes{
    public:
 
       //Shapes( map< string, map<string,TH1D*> >& );
-      Shapes( TH1D*& );
+      Shapes( TH1D*&, double, double, double, double );
       ~Shapes();
 
       double Fmbl_tot(double*, double*);
@@ -24,6 +24,7 @@ class Shapes{
 
 
       double lmbl, lmass, gnorm;
+      double lbmbl, rbmbl;
       vector<double> ptrain;
       TVectorD aGPsig;
       TVectorD aGPbkg;

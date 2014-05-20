@@ -188,8 +188,28 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       end = tree->GetEntries();
    }
 
+   // temp
+   TRandom3 *rand = new TRandom3(0);
+   int numevents = end-start;
+   vector<int> eventlist;
+   // TODO
+   if( false/*opt == 1*/ ){
+      for(int i=start; i < end; i++){
+         eventlist.push_back(i);
+      }
+   }
+   if( true/*opt == 2*/ ){
+      for(int i=0; i < numevents; i++){
+         eventlist.push_back( start+rand->Integer(end-start) );
+      }
+   }
+   sort( eventlist.begin(), eventlist.end() );
+
+   // TODO
    // fill event vector
-   for( int ev=start; ev < end; ev++ ){
+   //for( int ev=start; ev < end; ev++ ){
+   for(unsigned int i=0; i < eventlist.size(); i++){
+      int ev = eventlist[i];
 
       tree->GetEntry(ev);
 
@@ -282,13 +302,15 @@ void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
    //gMinuit->SetTolerance(0.001);
-   //gMinuit->SetTolerance(0.1);
+   gMinuit->SetTolerance(1.0);
    gMinuit->SetPrintLevel(3);
 
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
    gMinuit->SetFunction( *fFunc );
    gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
    gMinuit->SetLimitedVariable(1, "norm", 0.7, 0.1, 0, 1.0);
+   //gMinuit->SetFixedVariable(0, "topMass", 172.5);
+   //gMinuit->SetFixedVariable(1, "norm", 0.70712);
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
@@ -298,6 +320,9 @@ void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
    gMinuit->Minimize();
    cout << "\nComputing Hessian." << endl;
    gMinuit->Hesse();
+   double emtLow=0, emtUp=0;
+   gMinuit->GetMinosError(0,emtLow,emtUp);
+   cout << "MINOS ERROR: -" << emtLow << " +" << emtUp << endl;
 
    return;
 }
@@ -329,7 +354,6 @@ double Fitter::Min2LL(const double *x){
    // evaluate likelihood
    for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++ ){
       if( !(ev->fit_event) ) continue;
-      //if( (ev-eventvec_fit->begin()) % 8 != 1 ) continue;
 
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
          if( ev->mbls[i] > rangembl ) continue;
@@ -473,6 +497,9 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
       delete canvas;
       delete func;
    }
+
+   fileout->Close();
+   return;
 
    //
    // plot likelihood near minimum

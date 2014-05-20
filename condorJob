@@ -10,5 +10,4 @@ Log = condorlogs/condor_$(Cluster)_$(Process).log
 Arguments = $(Process)
 notify_user = ${LOGNAME}@FNAL.GOV
 notification = ERROR
-#Queue 919
-Queue 119
+Queue 800

@@ -30,7 +30,6 @@ Shapes::Shapes( TH1D *&hmbl_bkg_temp, double gplength_mbl, double gplength_mt,
    rbmbl = rbound_mbl;
    gnorm = 1.0;
    int ntrain = 100;
-   //double rtrain = 1000;
    double rtrain = 300;
    for(int i=0; i < ntrain; i++) ptrain.push_back( (i+0.5)*rtrain/ntrain );
 
@@ -53,8 +52,6 @@ double Shapes::Fmbl_tot(double *px, double *pp){
    double integralsig = pp[3];
    double integralbkg = pp[4];
 
-   //return norm*(k*Fmbl_sig_param(x, mt)/integral + (1-k)*Fmbl_bkg(x));
-   //return norm*(k*Fmbl_sig_gp(x, mt)/integralsig + (1-k)*Fmbl_bkg(x));
    double val = norm*(k*Fmbl_sig_gp(x, mt)/integralsig + (1-k)*Fmbl_bkg_gp(x, mt)/integralbkg);
    if( val <= 0 or (x > lbmbl and x < rbmbl) ) return 1E-10;
    else return val;

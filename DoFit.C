@@ -20,10 +20,16 @@ void print_usage(){
    cout << setw(25) << "\t-f --fit" << "Turn on fit.\n";
    cout << setw(25) << "\t-d --diagnostics" << "Turn on diagnostics.\n";
    cout << setw(25) << "\t-a --data" << "Run the fit on data (use full mc for training).\n";
+   cout << setw(25) << "\t-p --profile" << "Run the likelihood profile.\n";
    cout << setw(25) << "\t-m --masspnt  <value>" << "If running on mc, use masspoint indicated.\n";
+   cout << setw(25) << "\t-b --lmbl" << "Set the mbl lengthscale.\n";
+   cout << setw(25) << "\t-t --lmbl" << "Set the mt lengthscale.\n";
+   cout << setw(25) << "\t-l --lbnd" << "Left bound for exclusion.\n";
+   cout << setw(25) << "\t-r --rbnd" << "Right bound for exclusion.\n";
    cout << setw(25) << "\t-h --help" << "Display this menu.\n";
    cout << endl;
    return;
+
 }
 
 int main(int argc, char* argv[]){
@@ -69,8 +75,8 @@ int main(int argc, char* argv[]){
    int do_diagnostics = 0;
    int use_data = 0;
    float masspnt = 0;
-   float lengthscale_mbl = 25;
-   float lengthscale_mt = 3;
+   float lengthscale_mbl = 13;
+   float lengthscale_mt = 32;
 
    struct option longopts[] = {
       { "fit",          no_argument,         &do_fit,          'f' },
@@ -215,8 +221,8 @@ int main(int argc, char* argv[]){
    fitter.DeclareHists( hists_train_, "train" );
    fitter.FillHists( hists_train_, eventvec_train );
 
-   //fitter.DeclareHists( hists_test_, "test" );
-   //fitter.FillHists( hists_test_, eventvec_test );
+   fitter.DeclareHists( hists_test_, "test" );
+   fitter.FillHists( hists_test_, eventvec_test );
 
    if( do_diagnostics ){ 
       fitter.DeclareHists( hists_all_, "all" );
@@ -274,6 +280,7 @@ int main(int argc, char* argv[]){
          cout << "wgt = " << wgt << endl;
 
          // do GP training
+         cout << "Training GP." << endl;
          Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl"]["fitevts"],
               fitter.gplength_mbl, fitter.gplength_mt, fitter.lbnd, fitter.rbnd );
          fptr->TrainGP( hists_train_ );
@@ -281,20 +288,6 @@ int main(int argc, char* argv[]){
          fitter.aGPsig = fptr->aGPsig;
          fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
          fitter.aGPbkg = fptr->aGPbkg;
-
-         /*
-         TFile *ftemp = new TFile("ftemp.root","RECREATE");
-         ftemp->cd();
-         TH1D *htemp = new TH1D("hmbl","hmbl",100,0,300);
-         for(vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
-            for(int m=0; m < ev->mbls.size(); m++){
-               htemp->Fill(ev->mbls[m]);
-            }
-         }
-         htemp->Write("hmbl");
-         ftemp->Close();
-         return 0;
-         */
 
          fitter.PlotTemplates( hists_train_ );
 
@@ -411,20 +404,6 @@ int main(int argc, char* argv[]){
             fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
             fitter.aGPbkg = fptr->aGPbkg;
 
-            /*
-            TFile *ftemp = new TFile("ftemp.root","RECREATE");
-            ftemp->cd();
-            TH1D *htemp = new TH1D("hmbl","hmbl",100,0,300);
-            for(vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
-               for(int m=0; m < ev->mbls.size(); m++){
-                  htemp->Fill(ev->mbls[m],ev->weight);
-               }
-            }
-            htemp->Write("hmbl");
-            ftemp->Close();
-            return 0;
-            */
-            
             typedef map<string, TH1D*> tmap;
             typedef map<string, tmap> hmap;
             for( hmap::iterator h = hists_train_.begin(); h != hists_train_.end(); h++){

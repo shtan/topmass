@@ -148,7 +148,6 @@ void Fitter::DeleteHists( map< string, map<string, TH1D*> >& hists_ ){
 
    for( hmap::iterator h = hists_.begin(); h != hists_.end(); h++){
       for( tmap::iterator t = h->second.begin(); t != h->second.end(); t++){
-         //t->second->Delete();
          delete (t->second);
       }
    }

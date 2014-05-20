@@ -30,19 +30,13 @@ void Fitter::DeclareHists( map< string, map<string, TH1D*> >& hists_, string lab
 
    vector<string> type;
    type.push_back("data");
-   type.push_back("data_bkgcontrol");
    type.push_back("other");
-   type.push_back("other_bkgcontrol");
    string masspnts [] = {"161","163","166","169","172","175","178","181"};
    for(int i=0; i < 8; i++){
       type.push_back("ttbar"+masspnts[i]+"_signal");
       type.push_back("ttbar"+masspnts[i]+"_mistag");
       type.push_back("ttbar"+masspnts[i]+"_taus");
       type.push_back("ttbar"+masspnts[i]+"_hadronic");
-      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_signal");
-      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_mistag");
-      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_taus");
-      type.push_back("ttbar"+masspnts[i]+"_bkgcontrol_hadronic");
    }
    type.push_back("fitevts"); // for displaying fit results (could be mc or data)
 
@@ -642,14 +636,6 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                hmc->Add( hists_[names[i]]["ttbar"+smass+"_hadronic"] );
                hmc->Add( hists_[names[i]]["other"] );
             }
-
-            // set bkg control sample
-            TH1D *hmc_bkg;
-            hmc_bkg = (TH1D*)hists_[names[i]]["ttbar"+smass+"_bkgcontrol_signal"]->Clone("hmc_bkg");
-            hmc_bkg->Add( hists_[names[i]]["ttbar"+smass+"_bkgcontrol_mistag"] );
-            hmc_bkg->Add( hists_[names[i]]["ttbar"+smass+"_bkgcontrol_taus"] );
-            hmc_bkg->Add( hists_[names[i]]["ttbar"+smass+"_bkgcontrol_hadronic"] );
-            hmc_bkg->Add( hists_[names[i]]["other_bkgcontrol"] );
 
             if( names[i].compare("mbl_fit") == 0 ){
                hmc->Rebin(4);

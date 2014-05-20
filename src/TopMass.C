@@ -237,11 +237,7 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       }
       // physics backgrounds
       else if( process.find("ttbar") == string::npos ){
-         if( process.find("bkgcontrol") == string::npos ){
-            evtemp.type = "other";
-         }else{
-            evtemp.type = "other_bkgcontrol";
-         }
+         evtemp.type = "other";
       }
       // hadronic decays
       else if( fabs(lpPdgIdGEN) < 5 or fabs(lmPdgIdGEN) < 5

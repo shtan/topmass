@@ -169,24 +169,17 @@ int main(int argc, char* argv[]){
       Dataset *dat = &(it->second);
 
       datacount[name] = 0;
-      datacount[name+"_bkgcontrol"] = 0;
 
       TFile file( (dat->path+dat->file).c_str() );
       TTree *trees = (TTree*)file.Get("RealData");
-      TTree *treeb = (TTree*)file.Get("buBkg");
 
       cout << setiosflags(ios::left);
       cout << "... " << setw(25) << name
          << ": " << trees->GetEntries() << " events" << endl;
-      cout << "... " << setw(25) << name+"_bkgcontrol"
-         << ": " << treeb->GetEntries() << " events" << endl;
 
       if( do_diagnostics or use_data ){
          fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
                "RealData", eventvec_datamc );
-         // bkg control sample
-         fitter.ReadNtuple( dat->path+dat->file, name+"_bkgcontrol", dat->mc_xsec/dat->mc_nevts,
-               "buBkg", eventvec_datamc );
       }
 
       // events for training and testing
@@ -195,18 +188,11 @@ int main(int argc, char* argv[]){
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
                   "RealData", eventvec_train );
-            fitter.ReadNtuple( dat->path+dat->file, name+"_bkgcontrol", dat->mc_xsec/dat->mc_nevts,
-                  "buBkg", eventvec_train );
          }else{
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
                   "RealData", eventvec_train, 1 );
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
                   "RealData", eventvec_test, 2 );
-            // bkg control sample
-            fitter.ReadNtuple( dat->path+dat->file, name+"_bkgcontrol", dat->mc_xsec/dat->mc_nevts,
-                  "buBkg", eventvec_train, 1 );
-            fitter.ReadNtuple( dat->path+dat->file, name+"_bkgcontrol", dat->mc_xsec/dat->mc_nevts,
-                  "buBkg", eventvec_test, 2 );
          }
 
       }

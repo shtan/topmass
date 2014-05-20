@@ -17,6 +17,7 @@ void print_usage(){
    cout << "\nUsage: ./DoFit <flags>\n";
    cout << "Flags: \n";
    cout << setiosflags(ios::left);
+   cout << setw(25) << "\t-n --run_number" << "Run number.\n";
    cout << setw(25) << "\t-f --fit" << "Turn on fit.\n";
    cout << setw(25) << "\t-d --diagnostics" << "Turn on diagnostics.\n";
    cout << setw(25) << "\t-a --data" << "Run the fit on data (use full mc for training).\n";
@@ -26,6 +27,7 @@ void print_usage(){
    cout << setw(25) << "\t-t --lmbl" << "Set the mt lengthscale.\n";
    cout << setw(25) << "\t-l --lbnd" << "Left bound for exclusion.\n";
    cout << setw(25) << "\t-r --rbnd" << "Right bound for exclusion.\n";
+   cout << setw(25) << "\t-o --bootstrap" << "Turn on bootstrapping.\n";
    cout << setw(25) << "\t-h --help" << "Display this menu.\n";
    cout << endl;
    return;
@@ -45,6 +47,7 @@ int main(int argc, char* argv[]){
    map< string, map<string, TH1D*> > hists_test_;
 
    // output fit results
+   int run_number=0;
    int fitstatus=-1;
    double mt=0, mt_err=0;
    double kmbl=0, kmbl_err=0;
@@ -56,6 +59,7 @@ int main(int argc, char* argv[]){
    double rbound_mbl=0;
    
    TTree *tree = new TTree("FitResults", "FitResults");
+   tree->Branch("runNumber", &run_number);
    tree->Branch("fitStatus", &fitstatus);
    tree->Branch("mt", &mt);
    tree->Branch("mt_err", &mt_err);
@@ -77,8 +81,10 @@ int main(int argc, char* argv[]){
    float masspnt = 0;
    float lengthscale_mbl = 13;
    float lengthscale_mt = 32;
+   int do_bootstrap = 0;
 
    struct option longopts[] = {
+      { "run_number",   required_argument,   0,                'n' },
       { "fit",          no_argument,         &do_fit,          'f' },
       { "diagnostics",  no_argument,         &do_diagnostics,  'd' },
       { "data",         no_argument,         &use_data,        'a' },
@@ -88,6 +94,7 @@ int main(int argc, char* argv[]){
       { "lmt",          required_argument,   0,                't' },
       { "lbnd",         required_argument,   0,                'l' },
       { "rbnd",         required_argument,   0,                'r' },
+      { "bootstrap",    no_argument,         &do_bootstrap,    'o' },
       { "help",         no_argument,         NULL,             'h' },
       { 0, 0, 0, 0 }
    };
@@ -95,6 +102,10 @@ int main(int argc, char* argv[]){
    while( (c = getopt_long(argc, argv, "fdahpm:b:t:", longopts, NULL)) != -1 ) {
       switch(c)
       {
+         case 'n' :
+            run_number = atoi(optarg);
+            break;
+
          case 'f' :
             do_fit = 1;
             break;
@@ -131,6 +142,10 @@ int main(int argc, char* argv[]){
             fitter.compute_profile = true;
             break;
 
+         case 'o' :
+            do_bootstrap = 1;
+            break;
+
          case 'h' :
             print_usage();
             return -1;
@@ -162,6 +177,10 @@ int main(int argc, char* argv[]){
    // for event counting
    map<string, int> datacount;
 
+   // random number seed for bootstrapping (turns on when nonzero)
+   int randseed = 0;
+   if( do_bootstrap ) randseed = run_number;
+
    cout << "\nLoading datasets" << endl;
    for(map<string, Dataset>::iterator it = datasets.begin(); it != datasets.end(); it++){
 
@@ -179,7 +198,7 @@ int main(int argc, char* argv[]){
 
       if( do_diagnostics or use_data ){
          fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-               "RealData", eventvec_datamc );
+               "RealData", eventvec_datamc, 0, 0 );
       }
 
       // events for training and testing
@@ -187,12 +206,12 @@ int main(int argc, char* argv[]){
 
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train );
+                  "RealData", eventvec_train, 0, randseed );
          }else{
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 1 );
+                  "RealData", eventvec_train, 1, randseed );
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_test, 2 );
+                  "RealData", eventvec_test, 2, randseed );
          }
 
       }

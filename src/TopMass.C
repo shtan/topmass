@@ -131,7 +131,7 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 }
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
-      string selection, vector<Event>& eventvec, int opt ){
+      string selection, vector<Event>& eventvec, int opt, int randseed ){
    
    // declare variables
    TLorentzVector *jet1 = new TLorentzVector();
@@ -189,25 +189,22 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    }
 
    // temp
-   TRandom3 *rand = new TRandom3(0);
+   TRandom3 *rand = new TRandom3(randseed);
    int numevents = end-start;
    vector<int> eventlist;
-   // TODO
-   if( false/*opt == 1*/ ){
+
+   if( randseed == 0 ){
       for(int i=start; i < end; i++){
          eventlist.push_back(i);
       }
-   }
-   if( true/*opt == 2*/ ){
+   }else{
       for(int i=0; i < numevents; i++){
          eventlist.push_back( start+rand->Integer(end-start) );
       }
    }
    sort( eventlist.begin(), eventlist.end() );
 
-   // TODO
    // fill event vector
-   //for( int ev=start; ev < end; ev++ ){
    for(unsigned int i=0; i < eventlist.size(); i++){
       int ev = eventlist[i];
 

@@ -85,7 +85,7 @@ class Fitter{
       Fitter();
       ~Fitter();
 
-      void ReadNtuple(string, string, double, string, vector<Event>&, int=0);
+      void ReadNtuple(string, string, double, string, vector<Event>&, int=0, int=0);
       void LoadDatasets(map<string, Dataset>&);
       void GetVariables(vector<Event>&);
 

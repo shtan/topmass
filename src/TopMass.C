@@ -298,7 +298,7 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
 }
 
 
-void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
+void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
    //gMinuit->SetTolerance(0.001);
@@ -314,7 +314,6 @@ void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
-   hmbl_bkg = hmbl_bkg_temp;
 
    cout << "\nFitting " << eventvec_fit->size() << " events." << endl;
    gMinuit->Minimize();
@@ -330,7 +329,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec, TH1D *&hmbl_bkg_temp ){
 double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
-   Shapes * fptr = new Shapes( hmbl_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -343,7 +342,7 @@ double Fitter::Min2LL(const double *x){
    delete fmbl_tot;
    delete fptr;
 
-   Shapes shape( hmbl_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes shape( gplength_mbl, gplength_mt, lbnd, rbnd );
    shape.aGPsig.ResizeTo( aGPsig.GetNoElements() );
    shape.aGPsig = aGPsig;
    shape.aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -386,7 +385,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
 
-   Shapes * fptr = new Shapes( hmbl_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );

@@ -15,13 +15,8 @@ using namespace std;
 // constructor and destructor
 //
 
-Shapes::Shapes( TH1D *&hmbl_bkg_temp, double gplength_mbl, double gplength_mt,
+Shapes::Shapes( double gplength_mbl, double gplength_mt,
      double lbound_mbl, double rbound_mbl ){
-
-   //hists_ = temphists_;
-   //hmbl_bkg = (TH1D*)hists_["mbl_fit"]["data_bkgcontrol"]->Clone("hmbl_bkg");
-   hmbl_bkg = (TH1D*)hmbl_bkg_temp->Clone("hmbl_bkg");
-   norm_mbl_bkg = hmbl_bkg->Integral("width");
 
    // GP options
    lmbl = gplength_mbl;
@@ -107,11 +102,6 @@ double Shapes::Fmbl_bkg_gp(double x, double mt){
    }
 
    return fgp;
-}
-
-double Shapes::Fmbl_bkg(double x){
-
-   return hmbl_bkg->Interpolate(x) / norm_mbl_bkg;
 }
 
 double Shapes::GPkern(double x1, double x2, double lx, double m1, double m2, double lm,

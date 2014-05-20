@@ -281,8 +281,8 @@ int main(int argc, char* argv[]){
 
          // do GP training
          cout << "Training GP." << endl;
-         Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl"]["fitevts"],
-              fitter.gplength_mbl, fitter.gplength_mt, fitter.lbnd, fitter.rbnd );
+         Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
+               fitter.lbnd, fitter.rbnd );
          fptr->TrainGP( hists_train_ );
          fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
          fitter.aGPsig = fptr->aGPsig;
@@ -292,7 +292,7 @@ int main(int argc, char* argv[]){
          fitter.PlotTemplates( hists_train_ );
 
          // events for fitting, hists for training
-         fitter.RunMinimizer( eventvec_fit, hists_fit_bkgcontrol_["mbl"]["fitevts"] );
+         fitter.RunMinimizer( eventvec_fit );
          fitter.PlotResults( hists_fit_ ); // plot fitted events
 
          // fill results tree
@@ -395,9 +395,9 @@ int main(int argc, char* argv[]){
             fitter.DeclareHists( hists_fit_bkgcontrol_, "fit_bkgcontrol" );
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
-            // do GP training
-            Shapes * fptr = new Shapes( hists_fit_bkgcontrol_["mbl"]["fitevts"],
-                 fitter.gplength_mbl, fitter.gplength_mt, fitter.lbnd, fitter.rbnd );
+            // do GP trainin
+            Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
+                  fitter.lbnd, fitter.rbnd );
             fptr->TrainGP( hists_train_ );
             fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
             fitter.aGPsig = fptr->aGPsig;
@@ -417,7 +417,7 @@ int main(int argc, char* argv[]){
             fitter.PlotTemplates( hists_train_ );
 
             // events for fitting, hists for training
-            fitter.RunMinimizer( eventvec_fit, hists_fit_bkgcontrol_["mbl"]["fitevts"] );
+            fitter.RunMinimizer( eventvec_fit );
             fitter.PlotResults( hists_fit_ ); // plot fitted events
 
             cout << "Fit Chi2 = " << fitter.fitchi2 << endl;

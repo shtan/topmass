@@ -89,7 +89,7 @@ class Fitter{
       void LoadDatasets(map<string, Dataset>&);
       void GetVariables(vector<Event>&);
 
-      void RunMinimizer(vector<Event>&, TH1D*&);
+      void RunMinimizer(vector<Event>&);
       void PlotResults(map< string, map<string, TH1D*> >&);
 
       ROOT::Minuit2::Minuit2Minimizer* gMinuit;

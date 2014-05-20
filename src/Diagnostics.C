@@ -671,7 +671,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             hmc->SetMarkerStyle(20);
             hmc->DrawCopy();
 
-            Shapes * fptr = new Shapes( hmc_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
+            Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
             fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
             fptr->aGPsig = aGPsig;
             fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -743,17 +743,9 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
          canvas->SetFillColor(0);
          canvas->cd();
 
-         // set bkg control sample (dummy)
-         TH1D *hmc_bkg;
-         hmc_bkg = (TH1D*)hists_["mbl"]["ttbar172_bkgcontrol_signal"]->Clone("hmc_bkg");
-         hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_mistag"] );
-         hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_taus"] );
-         hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_hadronic"] );
-         hmc_bkg->Add( hists_["mbl"]["other_bkgcontrol"] );
-
          // graph with template value at mbl = x
          TGraph *gtemplate = new TGraph();
-         Shapes * fptr = new Shapes( hmc_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
+         Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
          fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
          fptr->aGPsig = aGPsig;
          fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -842,15 +834,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
    // mbl likelihood
 
-   // set bkg control sample (dummy)
-   TH1D *hmc_bkg;
-   hmc_bkg = (TH1D*)hists_["mbl"]["ttbar172_bkgcontrol_signal"]->Clone("hmc_bkg");
-   hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_mistag"] );
-   hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_taus"] );
-   hmc_bkg->Add( hists_["mbl"]["ttbar172_bkgcontrol_hadronic"] );
-   hmc_bkg->Add( hists_["mbl"]["other_bkgcontrol"] );
-
-   Shapes * fptr = new Shapes( hmc_bkg, gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );

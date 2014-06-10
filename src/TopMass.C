@@ -56,8 +56,9 @@ Fitter::Fitter(){
    compute_profile = false;
 
    // gaussian process length scales
-   gplength_mbl = 25;
-   gplength_mt = 3;
+   gplength_mbl = 13;
+   gplength_mt = 32;
+   gnorm = 1.0;
 
 }
 
@@ -131,7 +132,7 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 }
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
-      string selection, vector<Event>& eventvec, int opt, int randseed ){
+      string selection, vector<Event>& eventvec, int opt, int randseed, double fracevts ){
    
    // declare variables
    TLorentzVector *jet1 = new TLorentzVector();
@@ -202,6 +203,12 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
          eventlist.push_back( start+rand->Integer(end-start) );
       }
    }
+
+   // run on fraction of total events
+   if( fracevts != -1 ){
+      eventlist.erase( eventlist.end()-floor(numevents*(1-fracevts)), eventlist.end() );
+   }
+
    sort( eventlist.begin(), eventlist.end() );
 
    // fill event vector
@@ -265,6 +272,7 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       }
 
       // push back event
+      //if ( (jet1->M() < 40 and jet2->M() < 40) )
       eventvec.push_back( evtemp );
 
    }
@@ -290,6 +298,27 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
    return;
 }
 
+void Fitter::ReweightMC( vector<Event>& eventvec, string name ){
+   cout << "Reweighting MC events." << endl;
+
+   double weight_norm = 0;
+   double nevts_ttbar = 0;
+   for(vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
+      if( ev->type.find(name) != string::npos ){
+         weight_norm += ev->weight;
+         nevts_ttbar++;
+      }
+   }
+   cout << "---> nevts = " << nevts_ttbar << " weight_norm = " << weight_norm << endl;
+   // reweight
+   double wgt=0;
+   for(vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
+      ev->weight *= 1.0*nevts_ttbar/weight_norm;
+      wgt += ev->weight;
+   }
+   cout << "---> sum of weights = " << wgt << endl;
+
+}
 
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
@@ -308,6 +337,15 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    // set event vector and minimize
    eventvec_fit = &eventvec;
 
+   // TODO
+   /*
+   double xtemp [] = {173.11,0.70712};
+   for(double x=-2.0; x < 2.0; x += 0.1){
+      xtemp[0] = 173.11+x;
+      cout << "mt = " << 173.11+x << ": " << Min2LL(xtemp) << endl;
+   }
+   */
+
    cout << "\nFitting " << eventvec_fit->size() << " events." << endl;
    gMinuit->Minimize();
    cout << "\nComputing Hessian." << endl;
@@ -322,7 +360,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -335,7 +373,7 @@ double Fitter::Min2LL(const double *x){
    delete fmbl_tot;
    delete fptr;
 
-   Shapes shape( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes shape( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
    shape.aGPsig.ResizeTo( aGPsig.GetNoElements() );
    shape.aGPsig = aGPsig;
    shape.aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -349,8 +387,9 @@ double Fitter::Min2LL(const double *x){
 
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
          if( ev->mbls[i] > rangembl ) continue;
-         if( ev->mbls[i] > lbnd and ev->mbls[i] < rbnd ) continue;
          double val = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
+         if( ev->mbls[i] > lbnd and ev->mbls[i] < rbnd ) val = 1;
+         //if( val < 0.0001 ) cout << ev->mbls[i] << ": " << val << endl;
          m2ll -= 2.0*ev->weight*log( val );
       }
 
@@ -378,7 +417,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
 
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -491,7 +530,6 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    }
 
    fileout->Close();
-   return;
 
    //
    // plot likelihood near minimum

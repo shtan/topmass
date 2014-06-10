@@ -1,6 +1,7 @@
 #include "TopMass.h"
 #include "TTree.h"
 #include "TFile.h"
+#include "TF1.h"
 
 #include <vector>
 #include <iostream>
@@ -20,14 +21,17 @@ void print_usage(){
    cout << setw(25) << "\t-n --run_number" << "Run number.\n";
    cout << setw(25) << "\t-f --fit" << "Turn on fit.\n";
    cout << setw(25) << "\t-d --diagnostics" << "Turn on diagnostics.\n";
+   cout << setw(25) << "\t-e --templates" << "Turn on template plots.\n";
    cout << setw(25) << "\t-a --data" << "Run the fit on data (use full mc for training).\n";
    cout << setw(25) << "\t-p --profile" << "Run the likelihood profile.\n";
    cout << setw(25) << "\t-m --masspnt  <value>" << "If running on mc, use masspoint indicated.\n";
    cout << setw(25) << "\t-b --lmbl" << "Set the mbl lengthscale.\n";
-   cout << setw(25) << "\t-t --lmbl" << "Set the mt lengthscale.\n";
+   cout << setw(25) << "\t-t --lmt" << "Set the mt lengthscale.\n";
+   cout << setw(25) << "\t-g --gnorm" << "Set noise term normalization parameter.\n";
    cout << setw(25) << "\t-l --lbnd" << "Left bound for exclusion.\n";
    cout << setw(25) << "\t-r --rbnd" << "Right bound for exclusion.\n";
    cout << setw(25) << "\t-o --bootstrap" << "Turn on bootstrapping.\n";
+   cout << setw(25) << "\t-c --fracevts" << "Fit fraction of events.\n";
    cout << setw(25) << "\t-h --help" << "Display this menu.\n";
    cout << endl;
    return;
@@ -47,7 +51,7 @@ int main(int argc, char* argv[]){
    map< string, map<string, TH1D*> > hists_test_;
 
    // output fit results
-   int run_number=0;
+   int run_number=-1;
    int fitstatus=-1;
    double mt=0, mt_err=0;
    double kmbl=0, kmbl_err=0;
@@ -55,8 +59,11 @@ int main(int argc, char* argv[]){
    double fitchi2=0;
    double gplength_mbl=0;
    double gplength_mt=0;
+   double gnorm=0;
    double lbound_mbl=0;
    double rbound_mbl=0;
+   double tsig_mbl_chi2 [8] = {0};
+   double tbkg_mbl_chi2 [8] = {0};
    
    TTree *tree = new TTree("FitResults", "FitResults");
    tree->Branch("runNumber", &run_number);
@@ -69,8 +76,11 @@ int main(int argc, char* argv[]){
    tree->Branch("fitchi2", &fitchi2);
    tree->Branch("gplength_mbl", &gplength_mbl);
    tree->Branch("gplength_mt", &gplength_mt);
+   tree->Branch("gnorm", &gnorm);
    tree->Branch("lbound_mbl", &lbound_mbl);
    tree->Branch("rbound_mbl", &rbound_mbl);
+   tree->Branch("tsig_mbl_chi2", tsig_mbl_chi2, "tsig_mbl_chi2[8]/D");
+   tree->Branch("tbkg_mbl_chi2", tbkg_mbl_chi2, "tbkg_mbl_chi2[8]/D");
 
 
    // option flags
@@ -79,27 +89,30 @@ int main(int argc, char* argv[]){
    int do_diagnostics = 0;
    int use_data = 0;
    float masspnt = 0;
-   float lengthscale_mbl = 13;
-   float lengthscale_mt = 32;
    int do_bootstrap = 0;
+   int do_templates = 0;
+   double fracevts = -1;
 
    struct option longopts[] = {
       { "run_number",   required_argument,   0,                'n' },
       { "fit",          no_argument,         &do_fit,          'f' },
       { "diagnostics",  no_argument,         &do_diagnostics,  'd' },
+      { "templates",    no_argument,         &do_templates,    'e' },
       { "data",         no_argument,         &use_data,        'a' },
       { "profile",      no_argument,         0,                'p' },
       { "masspnt",      required_argument,   0,                'm' },
       { "lmbl",         required_argument,   0,                'b' },
       { "lmt",          required_argument,   0,                't' },
+      { "gnorm",       required_argument,   0,                'g' },
       { "lbnd",         required_argument,   0,                'l' },
       { "rbnd",         required_argument,   0,                'r' },
       { "bootstrap",    no_argument,         &do_bootstrap,    'o' },
+      { "fracevts",     required_argument,   0,                'c' },
       { "help",         no_argument,         NULL,             'h' },
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdahpm:b:t:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdeahpon:m:b:t:g:l:r:c:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -114,6 +127,10 @@ int main(int argc, char* argv[]){
             do_diagnostics = 1;
             break;
 
+         case 'e' :
+            do_templates = 1;
+            break;
+
          case 'a' :
             use_data = 1;
             break;
@@ -123,11 +140,11 @@ int main(int argc, char* argv[]){
             break;
 
          case 'b' :
-            lengthscale_mbl = atof(optarg);
+            fitter.gplength_mbl = atof(optarg);
             break;
 
          case 't' :
-            lengthscale_mt = atof(optarg);
+            fitter.gplength_mt = atof(optarg);
             break;
 
          case 'l' :
@@ -138,12 +155,20 @@ int main(int argc, char* argv[]){
             fitter.rbnd = atof(optarg);
             break;
 
+         case 'g' :
+            fitter.gnorm = atof(optarg);
+            break;
+
          case 'p' :
             fitter.compute_profile = true;
             break;
 
          case 'o' :
             do_bootstrap = 1;
+            break;
+
+         case 'c' :
+            fracevts = atof(optarg);
             break;
 
          case 'h' :
@@ -169,9 +194,6 @@ int main(int argc, char* argv[]){
       }
    }
 
-   fitter.gplength_mbl = lengthscale_mbl;
-   fitter.gplength_mt = lengthscale_mt;
-
    fitter.LoadDatasets( datasets );
 
    // for event counting
@@ -179,7 +201,7 @@ int main(int argc, char* argv[]){
 
    // random number seed for bootstrapping (turns on when nonzero)
    int randseed = 0;
-   if( do_bootstrap ) randseed = run_number;
+   if( do_bootstrap ) randseed = run_number+1+10E6;
 
    cout << "\nLoading datasets" << endl;
    for(map<string, Dataset>::iterator it = datasets.begin(); it != datasets.end(); it++){
@@ -198,7 +220,7 @@ int main(int argc, char* argv[]){
 
       if( do_diagnostics or use_data ){
          fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-               "RealData", eventvec_datamc, 0, 0 );
+               "RealData", eventvec_datamc, 0, 0, -1 );
       }
 
       // events for training and testing
@@ -206,12 +228,12 @@ int main(int argc, char* argv[]){
 
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 0, randseed );
+                  "RealData", eventvec_train, 0, randseed, -1 );
          }else{
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 1, randseed );
+                  "RealData", eventvec_train, 1, randseed, -1 );
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_test, 2, randseed );
+                  "RealData", eventvec_test, 2, randseed, fracevts );
          }
 
       }
@@ -243,6 +265,8 @@ int main(int argc, char* argv[]){
       map< string, map<string, TH1D*> > hists_fit_bkgcontrol_;
 
       if( use_data ){
+         // TODO
+         cout << "REMINDER: EVENT WEIGHTS IN MC" << endl;
          for(vector<Event>::iterator ev = eventvec_datamc.begin(); ev < eventvec_datamc.end();ev++){
             if( ev->type.find("data") != string::npos ){
                if( ev->type.find("bkgcontrol") == string::npos ){
@@ -285,16 +309,16 @@ int main(int argc, char* argv[]){
          cout << "wgt = " << wgt << endl;
 
          // do GP training
-         cout << "Training GP." << endl;
+         cout << "Training GP... ";
+         // TODO
          Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
-               fitter.lbnd, fitter.rbnd );
+               fitter.lbnd, fitter.rbnd, fitter.gnorm );
          fptr->TrainGP( hists_train_ );
+         cout << " done." << endl;
          fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
          fitter.aGPsig = fptr->aGPsig;
          fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
          fitter.aGPbkg = fptr->aGPbkg;
-
-         fitter.PlotTemplates( hists_train_ );
 
          // events for fitting, hists for training
          fitter.RunMinimizer( eventvec_fit );
@@ -311,7 +335,8 @@ int main(int argc, char* argv[]){
          kmbl_err = par_err[1];
          fitchi2 = fitter.fitchi2;
 
-         tree->Fill();
+         // TODO
+         //tree->Fill();
 
          eventvec_fit.clear();
          eventvec_fit_bkgcontrol.clear();
@@ -356,6 +381,9 @@ int main(int argc, char* argv[]){
                }
             }
 
+            // TODO
+            fitter.ReweightMC( eventvec_fit, dname );
+            /* 
             // define mc event weights -- ttbar events must have an average weight of 1
             double weight_norm = 0;
             double nevts_ttbar = 0;
@@ -373,6 +401,7 @@ int main(int argc, char* argv[]){
                wgt += ev->weight;
             }
             cout << "wgt = " << wgt << endl;
+            */
 
             // flag events to be fitted
             for( vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
@@ -400,14 +429,57 @@ int main(int argc, char* argv[]){
             fitter.DeclareHists( hists_fit_bkgcontrol_, "fit_bkgcontrol" );
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
-            // do GP trainin
+            // do GP training
+            // TODO
             Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
-                  fitter.lbnd, fitter.rbnd );
+                  fitter.lbnd, fitter.rbnd, fitter.gnorm );
             fptr->TrainGP( hists_train_ );
             fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
             fitter.aGPsig = fptr->aGPsig;
             fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
             fitter.aGPbkg = fptr->aGPbkg;
+
+            // TODO
+            //
+            /*
+            cout << "Testing integral..." << endl;
+            //double masspnts [] = {161.5,163.5,166.5,169.5,172.5,175.5,178.5,181.5};
+            for( int m=160; m < 182; m++ ){
+               cout << "mass = " << m << ": " << endl;
+
+               TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 300, 5);
+               fmbl_tot->SetParameters( m, 1.0, 1.0, 1.0, 1.0 );
+               double integralsig = fmbl_tot->Integral(0,300);
+               fmbl_tot->SetParameters( m, 0.0, 1.0, 1.0, 1.0 );
+               double integralbkg = fmbl_tot->Integral(0,300);
+
+               // signal integral
+               double pmbl [] = {m, 1.0, 1.0, integralsig, integralbkg};
+               double integral = 0;
+               for(double x=0; x < 300; x+=0.1){
+                  integral += 0.1*fptr->Fmbl_tot( &x, pmbl );
+               }
+               cout << " -----> sig integral = " << integral << endl;
+
+               // bkg integral
+               pmbl[1] = 0.0;
+               integral = 0;
+               for(double x=0; x < 300; x+=0.1){
+                  integral += 0.1*fptr->Fmbl_tot( &x, pmbl );
+               }
+               cout << " -----> bkg integral = " << integral << endl;
+
+               // s+b integral
+               pmbl[1] = 0.5;
+               integral = 0;
+               for(double x=0; x < 300; x+=0.1){
+                  integral += 0.1*fptr->Fmbl_tot( &x, pmbl );
+               }
+               cout << " -----> s+b integral = " << integral << endl;
+
+            }
+            return 0;
+            */
 
             typedef map<string, TH1D*> tmap;
             typedef map<string, tmap> hmap;
@@ -419,7 +491,6 @@ int main(int argc, char* argv[]){
                   }
                }
             }
-            fitter.PlotTemplates( hists_train_ );
 
             // events for fitting, hists for training
             fitter.RunMinimizer( eventvec_fit );
@@ -438,12 +509,14 @@ int main(int argc, char* argv[]){
             mt_err = par_err[0];
             kmbl_err = par_err[1];
             fitchi2 = fitter.fitchi2;
-            gplength_mbl = lengthscale_mbl;
-            gplength_mt = lengthscale_mt;
+            gplength_mbl = fitter.gplength_mbl;
+            gplength_mt = fitter.gplength_mt;
+            gnorm = fitter.gnorm;
             lbound_mbl = fitter.lbnd;
             rbound_mbl = fitter.rbnd;
 
-            tree->Fill();
+            // TODO
+            //tree->Fill();
 
             eventvec_fit.clear();
             eventvec_fit_bkgcontrol.clear();
@@ -456,11 +529,41 @@ int main(int argc, char* argv[]){
 
    }
 
+   if( do_templates){
+
+      // do GP training
+      cout << "Training GP... ";
+      Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
+            fitter.lbnd, fitter.rbnd, fitter.gnorm );
+      fptr->TrainGP( hists_train_ );
+      cout << " done." << endl;
+      fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
+      fitter.aGPsig = fptr->aGPsig;
+      fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
+      fitter.aGPbkg = fptr->aGPbkg;
+      // TODO
+      fitter.Asig.ResizeTo( fptr->aGPsig.GetNoElements(), fptr->aGPsig.GetNoElements() );
+      fitter.Asig = fptr->Asig;
+      fitter.Abkg.ResizeTo( fptr->aGPbkg.GetNoElements(), fptr->aGPbkg.GetNoElements() );
+      fitter.Abkg = fptr->Abkg;
+
+      fitter.PlotTemplates( hists_train_ );
+      for(int j=0; j < 8; j++){
+         tsig_mbl_chi2[j] = fitter.tsig_mbl_chi2[j];
+         tbkg_mbl_chi2[j] = fitter.tbkg_mbl_chi2[j];
+      }
+
+   }
+
+   if( do_fit or do_templates ){
+      tree->Fill();
+   }
+
 
    //
    // write fit results
    //
-   if( do_fit ){
+   if( do_fit or do_templates ){
       // set up output file path
       std::string pathstr;
       char* path = std::getenv("WORKING_DIR");

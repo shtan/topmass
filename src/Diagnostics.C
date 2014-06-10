@@ -177,6 +177,7 @@ void Fitter::FillHists( map< string, map<string, TH1D*> >& hists_,
       TLorentzVector bbl1 = jet1 + jet2 + lep1;
       TLorentzVector bbl2 = jet1 + jet2 + lep2;
 
+      // TODO
       if ( !(jet1.M() < 40 and jet2.M() < 40) ) continue;
 
       if (sin((jet1).DeltaPhi(up221))*sin((jet2).DeltaPhi(up221)) > 0){
@@ -188,8 +189,10 @@ void Fitter::FillHists( map< string, map<string, TH1D*> >& hists_,
       if( ev->mt2_210 > 1 ) hists_["mt2_210"][type]->Fill( ev->mt2_210, ev->weight );
 
       for( unsigned int m=0; m < ev->mbls.size(); m++ ){
-         hists_["mbl"][type]->Fill( ev->mbls[m], ev->weight );
-         hists_["mbl_fit"][type]->Fill( ev->mbls[m], ev->weight );
+         if( !(fit_events and ev->mbls[m] > lbnd and ev->mbls[m] < rbnd) ){
+            hists_["mbl"][type]->Fill( ev->mbls[m], ev->weight );
+            hists_["mbl_fit"][type]->Fill( ev->mbls[m], ev->weight );
+         }
          //hists2d_["mblV220"][type]->Fill( ev->mt2_220, ev->mbls[m], ev->weight );
          if( ev->mbls[m] == ev->mt2_220 ) matchmbl = true;
       }
@@ -657,11 +660,16 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             hmc->SetMarkerStyle(20);
             hmc->DrawCopy();
 
-            Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+            Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
             fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
             fptr->aGPsig = aGPsig;
             fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
             fptr->aGPbkg = aGPbkg;
+            // TODO
+            fptr->Asig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
+            fptr->Asig = Asig;
+            fptr->Abkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
+            fptr->Abkg = Abkg;
             TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
             ftemplate->SetNpx(500);
 
@@ -675,6 +683,18 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             ftemplate->SetLineWidth(2);
             ftemplate->DrawCopy("same");
             hmc->DrawCopy("same"); // redraw points
+
+            // TODO
+            // TGraph with GP covariance
+            TGraphErrors *gpvar = new TGraphErrors();
+            for(int x=0; x < 300; x++){
+               gpvar->SetPoint(x, x, ftemplate->Eval(x));
+               gpvar->SetPointError(x, 0, sqrt(fptr->Fmbl_gp_var(x,masspnts[j],sb[k])));
+            }
+            gpvar->SetLineColor(2);
+            gpvar->SetFillStyle(3004);
+            gpvar->SetFillColor(4);
+            gpvar->Draw("E2");
 
             // pad 2
             pad2->cd();
@@ -704,10 +724,31 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
             canvas->Write();
 
+            if( i==0 ){         
+               double chi2 = 0;
+               TH1D *hchi2 = (TH1D*)hmc->Clone("hchi2");
+               hchi2->Rebin(2);
+               for(int n=0; n <= hchi2->GetNbinsX(); n++){
+                  double bincontent = hchi2->GetBinContent(n);
+                  double binerr = hchi2->GetBinError(n);
+                  double feval = ftemplate->Eval(hchi2->GetBinCenter(n));
+                  if( binerr == 0 ) binerr = 1;
+                  chi2 += pow( (bincontent-feval)/binerr, 2);
+                  if( j==1 and k==0 ) cout << hchi2->GetBinCenter(n) << ": " << chi2 << endl;
+               }
+
+               if( k==0 ){
+                  tsig_mbl_chi2[j] = chi2;
+               }else if( k==1 ){
+                  tbkg_mbl_chi2[j] = chi2;
+               }
+            }
+
             delete canvas;
             delete func;
             delete ftemplate;
             delete fptr;
+            delete gpvar;
          }
       }
    }
@@ -730,12 +771,18 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
          canvas->cd();
 
          // graph with template value at mbl = x
-         TGraph *gtemplate = new TGraph();
-         Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+         TGraphErrors *gtemplate = new TGraphErrors();
+         Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
          fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
          fptr->aGPsig = aGPsig;
          fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
          fptr->aGPbkg = aGPbkg;
+         // TODO
+         fptr->Asig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
+         fptr->Asig = Asig;
+         fptr->Abkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
+         fptr->Abkg = Abkg;
+
          TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
          int count=0;
          for(double m=160.0; m <= 183.0; m+=0.5){ // value of mt
@@ -746,11 +793,14 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             ftemplate->SetParameters( m, 1-k, 1.0, integralsig, integralbkg );
 
             gtemplate->SetPoint(count, m, ftemplate->Eval(x));
+            gtemplate->SetPointError(count, 0, sqrt(fptr->Fmbl_gp_var(x,m,sb[k])));
             count++;
          }
          gtemplate->SetTitle( TString("M_{bl} "+sb[k]+" shape @ mbl = "+smbl) );
          gtemplate->SetLineColor(2);
          gtemplate->SetLineWidth(2);
+         gtemplate->SetFillStyle(3004);
+         gtemplate->SetFillColor(4);
 
          // now do the same at mc masspoints
          TGraphErrors *gmc = new TGraphErrors();
@@ -781,7 +831,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
          gmc->SetMinimum( min(gtemplate->GetMinimum(),gmc->GetMinimum()) );
          gmc->SetMaximum( max(gtemplate->GetMaximum(),gmc->GetMaximum()) );
          gmc->Draw("AEP");
-         gtemplate->Draw("same C");
+         gtemplate->Draw("same CE2");
          gmc->Draw("EP");
 
          canvas->Write();
@@ -820,7 +870,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
    // mbl likelihood
 
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );

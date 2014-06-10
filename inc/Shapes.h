@@ -12,22 +12,25 @@ class Shapes{
 
    public:
 
-      Shapes( double, double, double, double );
+      // TODO
+      Shapes( double, double, double, double, double );
       ~Shapes();
 
       double Fmbl_tot(double*, double*);
       double Fmbl_sig_param(double, double);
-      double Fmbl_sig_gp(double, double);
-      double Fmbl_bkg_gp(double, double);
+      double Fmbl_gp(double, double, string);
+      double Fmbl_gp_var(double, double, string);
 
       double lmbl, lmass, gnorm;
       double lbmbl, rbmbl;
       vector<double> ptrain;
+      TMatrixD Asig;
+      TMatrixD Abkg;
       TVectorD aGPsig;
       TVectorD aGPbkg;
       void SetGPopts();
       void TrainGP( map< string, map<string, TH1D*> >& );
-      double GPkern(double, double, double, double, double, double, double);
+      double GPkern(double, double, double, double, double, double);
 
 };
 

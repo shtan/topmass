@@ -36,15 +36,18 @@ for i in range( tree.GetEntries() ):
    varmt[iter] += (tree.mt)**2
 
 for iter in range(8):
-   meanmt[iter] = meanmt[iter]/countmt[iter]
-   varmt[iter] = varmt[iter]/countmt[iter] - meanmt[iter]**2
+   if countmt[iter] != 0:
+      meanmt[iter] = meanmt[iter]/countmt[iter]
+      varmt[iter] = varmt[iter]/countmt[iter] - meanmt[iter]**2
 
 gresults = TGraphErrors()
 chi2=0
 for i in range(8):
    gresults.SetPoint(i, mcmasses[i], meanmt[i]-mcmasses[i])
    gresults.SetPointError(i, 0.0, sqrt(varmt[i]))
-   chi = (meanmt[i]-mcmasses[i])/sqrt(varmt[i])
+   chi = 0
+   if varmt[i] != 0:
+      chi = (meanmt[i]-mcmasses[i])/sqrt(varmt[i])
    chi2 += chi*chi
    print str(mcmasses[i])+': '+str(meanmt[i])+' +- '+str(sqrt(varmt[i]))
 

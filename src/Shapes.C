@@ -2,6 +2,8 @@
 
 #include "TH1.h"
 #include "TMath.h"
+#include "TDecompLU.h"
+#include "TDecompChol.h"
 
 #include <cmath>
 #include <iostream>
@@ -16,7 +18,7 @@ using namespace std;
 //
 
 Shapes::Shapes( double gplength_mbl, double gplength_mt,
-     double lbound_mbl, double rbound_mbl, double norm ){
+     double lbound_mbl, double rbound_mbl, double norm1, double norm2 ){
 
    // GP options
    lmbl = gplength_mbl;
@@ -24,7 +26,8 @@ Shapes::Shapes( double gplength_mbl, double gplength_mt,
    lbmbl = lbound_mbl;
    rbmbl = rbound_mbl;
    // TODO
-   gnorm = norm;
+   gnorm1 = norm1;
+   gnorm2 = norm2;
    int ntrain = 100;
    double rtrain = 300;
    for(int i=0; i < ntrain; i++) ptrain.push_back( (i+0.5)*rtrain/ntrain );
@@ -113,24 +116,28 @@ double Shapes::Fmbl_gp_var(double x, double mt, string sb){
 
    double c1=0, c2=0;
    c1 = GPkern( x, x, lmbl, mt, mt, lmass );
-   if( sb.compare("sig") == 0 ) k *= Asig;
-   else if( sb.compare("bkg") == 0 ) k *= Abkg;
+   if( sb.compare("sig") == 0 ) k *= Ainv_sig;
+   else if( sb.compare("bkg") == 0 ) k *= Ainv_bkg;
    else{
       cout << "ERROR in GP shape." << endl;
       return -1;
    }
    c2 = kT*k;
 
+   //k.Print();
+   //kT.Print();
+
    return (c1-c2);
 }
 
 double Shapes::GPkern(double x1, double x2, double lx, double m1, double m2, double lm ){
 
-   double kernel = exp(-0.5*(pow( (x1-x2)/lx, 2)+pow( (m1-m2)/lm, 2)));
+   double kernel = gnorm2*gnorm1*exp(-0.5*(pow( (x1-x2)/lx, 2)+pow( (m1-m2)/lm, 2)));
    return kernel;
 }
 
-void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
+void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
+     double &m2llsig, double &m2llbkg ){
 
    double masspnts [] = {161.5, 163.5, 166.5, 169.5, 172.5, 175.5, 178.5, 181.5};
    int nmasses = 8;
@@ -158,7 +165,28 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
       hgp_bkg[i]->Add( hists_["mbl"]["other"] );
       hgp_bkg[i]->Scale( 1.0/hgp_bkg[i]->Integral("width") );
 
+      // TODO
+      
+      //hgp_sig[i]->Scale( 30000.0 );
+      //hgp_bkg[i]->Scale( 30000.0 );
+      for(int n=0; n < hgp_sig[i]->GetNbinsX(); n++){
+         if( hgp_sig[i]->GetBinError(n) < 5E-06 ) hgp_sig[i]->SetBinError(n, 5E-06);
+         if( hgp_bkg[i]->GetBinError(n) < 5E-06 ) hgp_bkg[i]->SetBinError(n, 5E-06);
+      }
+      
+
    }
+
+      // TODO
+   
+   /*
+   for(int i=0; i < hgp_sig[0]->GetNbinsX(); i++){
+      cout << i << ", " << hgp_sig[0]->GetBinCenter(i) << ": "
+         << hgp_sig[0]->GetBinContent(i) << " +- "
+         << hgp_sig[0]->GetBinError(i) << endl;
+   }
+   */
+   
 
    // compute covariance matrix
    TMatrixD K(ntrain*nmasses,ntrain*nmasses);
@@ -180,13 +208,14 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
       double binerr_sig = hgp_sig[imass]->GetBinError( hgp_sig[imass]->FindBin(ptrain[im]) );
       double binerr_bkg = hgp_bkg[imass]->GetBinError( hgp_bkg[imass]->FindBin(ptrain[im]) );
       // TODO
-      binerr_sig *= sqrt(gnorm);
-      binerr_bkg *= sqrt(gnorm);
-      cout << binerr_sig << " " << binerr_bkg << endl;
+      binerr_sig *= sqrt(gnorm2);
+      binerr_bkg *= sqrt(gnorm2);
+      //cout << binerr_sig << " " << binerr_bkg << endl;
       for(int j=0; j < ntrain*nmasses; j++){
          if( i==j ){
-            Nsig[i][j] = pow( max(binerr_sig,0.001), 2 );
-            Nbkg[i][j] = pow( max(binerr_bkg,0.001), 2 );
+            // TODO
+            Nsig[i][j] = binerr_sig*binerr_sig;//pow( max(binerr_sig,0.001), 2 );
+            Nbkg[i][j] = binerr_bkg*binerr_bkg;//pow( max(binerr_bkg,0.001), 2 );
          }else{
             Nsig[i][j] = 0;
             Nbkg[i][j] = 0;
@@ -195,16 +224,34 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
    }
 
    // inverse of sum
-   Asig.ResizeTo( ntrain*nmasses, ntrain*nmasses );
-   Abkg.ResizeTo( ntrain*nmasses, ntrain*nmasses );
-   Asig = K + Nsig;
-   Abkg = K + Nbkg;
-   Asig.Invert();
-   Abkg.Invert();
+   // TODO
+   /*
+   Ainv_sig.ResizeTo( ntrain*nmasses, ntrain*nmasses );
+   Ainv_bkg.ResizeTo( ntrain*nmasses, ntrain*nmasses );
+   Ainv_sig = Asig;
+   Ainv_bkg = Abkg;
+   Ainv_sig.Invert();
+   Ainv_bkg.Invert();
+   */
+
+   TMatrixD Asig = K + Nsig;
+   TMatrixD Abkg = K + Nbkg;
+   TDecompChol Cholsig(Asig);
+   TDecompChol Cholbkg(Abkg);
+   TMatrixD AsigU = Cholsig.GetU();
+   TMatrixD AbkgU = Cholbkg.GetU();
+   bool status = 0;
+   TMatrixDSym Asinv_sig = Cholsig.Invert(status);
+   TMatrixDSym Asinv_bkg = Cholbkg.Invert(status);
+   Ainv_sig.ResizeTo( ntrain*nmasses, ntrain*nmasses );
+   Ainv_bkg.ResizeTo( ntrain*nmasses, ntrain*nmasses );
+   Ainv_sig = (TMatrixD)Asinv_sig;
+   Ainv_bkg = (TMatrixD)Asinv_bkg;
+
 
    // TODO
-   TMatrixD Asigtemp = Asig;
-   TMatrixD Abkgtemp = Abkg;
+   TMatrixD Ainv_sigtemp = Ainv_sig;
+   TMatrixD Ainv_bkgtemp = Ainv_bkg;
 
    // vector of training points
    TVectorD ysig(ntrain*nmasses);
@@ -218,9 +265,139 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
 
    // alpha vector
    aGPsig.ResizeTo( ntrain*nmasses );
-   aGPsig = Asigtemp*ysig;
+   aGPsig = Ainv_sigtemp*ysig;
 
    aGPbkg.ResizeTo( ntrain*nmasses );
-   aGPbkg = Abkgtemp*ybkg;
+   aGPbkg = Ainv_bkgtemp*ybkg;
+
+   // compute marginal likelihood
+   //TDecompLU lusig(Asig);
+   //TDecompLU lubkg(Abkg);
+   //TMatrixD AsigLU = lusig.GetLU();
+   //TMatrixD AbkgLU = lubkg.GetLU();
+
+   double ldetsig = 0.0;
+   double ldetbkg = 0.0;
+   for(int i=0; i < Cholsig.GetNrows(); i++){
+      ldetsig += 2*log(AsigU[i][i]);
+      ldetbkg += 2*log(AbkgU[i][i]);
+      //cout << " *** " << log(AsigU[i][i]) << endl;
+   }
+
+   double term1sig = -0.5*ysig*aGPsig;
+   double term2sig = -0.5*ldetsig;
+   double term3sig = -0.5*ntrain*log(2*TMath::Pi());
+
+   double term1bkg = -0.5*ybkg*aGPbkg;
+   double term2bkg = -0.5*ldetbkg;
+   double term3bkg = -0.5*ntrain*log(2*TMath::Pi());
+
+   m2llsig = -2.0*(term1sig+term2sig+term3sig);
+   m2llbkg = -2.0*(term1bkg+term2bkg+term3bkg);
+
+   return;
+}
+
+void Shapes::LearnGPparams( map< string, map<string, TH1D*> > & hists_ ){
+
+   gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
+   //gMinuit->SetTolerance(0.001);
+   gMinuit->SetPrintLevel(3);
+
+   //fFunc = new ROOT::Math::Functor ( this, &Shapes::GPm2ll, 4 );
+   fFunc = new ROOT::Math::Functor ( this, &Shapes::GPm2llX, 4 );
+   gMinuit->SetTolerance(0.1);
+   gMinuit->SetFunction( *fFunc );
+   gMinuit->SetLimitedVariable(0, "gpnorm1", 1.0E-07, 1E-08, 0.0, 1.0);
+   gMinuit->SetLimitedVariable(1, "gpnorm2", 4.0, 0.1, 0.0, 50.0);
+   gMinuit->SetLowerLimitedVariable(2, "lmbl", 13, 1, 0.0);
+   gMinuit->SetLimitedVariable(3, "lmass", 32, 1, 0.0, 75.00);
+
+   // set training hist and minimize
+   hists_train_ = &hists_;
+
+   gMinuit->Minimize();
+   return;
+}
+
+double Shapes::GPm2ll( const double *x ){
+   cout << "gnorm: " << x[0] << ", " << x[1] << endl;
+   cout << "lmbl, lmt: " << x[1] << ", " << x[2] << endl;
+
+   gnorm1 = x[0];
+   gnorm2 = x[1];
+   lmbl = x[2];
+   lmass = x[3];
+   double m2llsig, m2llbkg;
+   TrainGP( *hists_train_, m2llsig, m2llbkg );
+
+   return m2llsig;
+}
+
+double Shapes::GPm2llX( const double *x ){
+   cout << "gnorm: " << x[0] << ", " << x[1] << endl;
+   cout << "lmbl, lmt: " << x[1] << ", " << x[2] << endl;
+
+   gnorm1 = x[0];
+   gnorm2 = x[1];
+   lmbl = x[2];
+   lmass = x[3];
+
+   int nmasses = 8;
+   double masspnts [] = {161.5, 163.5, 166.5, 169.5, 172.5, 175.5, 178.5, 181.5};
+
+   // histograms
+   vector<TH1D*> hgp_sig;
+   for(int j=0; j < nmasses; j++){
+
+      stringstream ssmass;
+      ssmass << floor(masspnts[j]);
+      string smass = ssmass.str();
+
+      // signal shape
+      hgp_sig.push_back( (TH1D*)(*hists_train_)["mbl"]["ttbar"+smass+"_signal"]
+            ->Clone( ("hgp_sigx"+smass).c_str()) );
+      hgp_sig[j]->Scale( 1.0/hgp_sig[j]->Integral("width") );
+
+   }
+
+   // set up training vector for cross validation
+   int ntrain = 100;
+   double rtrain = 300;
+
+   int nval = 4;
+   double m2ll_tot = 0;
+   for(int c=0; c < nval; c++){ // n-fold cross validation
+
+      ptrain.clear();
+      vector<double> ptrainX;
+      for(int i=0; i < ntrain; i++){ // exclude every nth point
+         if( i%nval != c ){
+            ptrain.push_back( (i+0.5)*rtrain/ntrain );
+         }else{
+            ptrainX.push_back( (i+0.5)*rtrain/ntrain );
+         }
+      }
+      double m2llsig, m2llbkg;
+      TrainGP( *hists_train_, m2llsig, m2llbkg );
+
+      // evaluate shape at excluded points
+      double m2ll = 0;
+      for(unsigned int i=0; i < ptrainX.size(); i++){
+         for(int j=0; j < nmasses; j++){
+
+            double mean = Fmbl_gp(ptrainX[i],masspnts[j],"sig");
+            double var = Fmbl_gp_var(ptrainX[i],masspnts[j],"sig");
+            double yi = hgp_sig[j]->GetBinContent( hgp_sig[j]->FindBin(ptrainX[i]) );
+
+            m2ll += log(var) + pow(mean-yi,2)/var + log(2*TMath::Pi());
+
+         }
+      }
+
+      m2ll_tot += m2ll;
+   }
+
+   return m2ll_tot;
 
 }

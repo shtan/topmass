@@ -597,6 +597,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
       for(unsigned int k=0; k < sizeof(sb)/sizeof(sb[0]); k++){ // sig,bkg
          for(int j=0; j < 8; j++){ // masses
+            cout << "ijk: " << i << " " << j << " " << k << endl;
 
             stringstream ssmass;
             ssmass << floor(masspnts[j]);
@@ -660,16 +661,16 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             hmc->SetMarkerStyle(20);
             hmc->DrawCopy();
 
-            Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
+            Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm1, gnorm2 );
             fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
             fptr->aGPsig = aGPsig;
             fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
             fptr->aGPbkg = aGPbkg;
             // TODO
-            fptr->Asig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
-            fptr->Asig = Asig;
-            fptr->Abkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
-            fptr->Abkg = Abkg;
+            fptr->Ainv_sig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
+            fptr->Ainv_sig = Ainv_sig;
+            fptr->Ainv_bkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
+            fptr->Ainv_bkg = Ainv_bkg;
             TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
             ftemplate->SetNpx(500);
 
@@ -681,8 +682,6 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                   1.0/*hmc->Integral("width")*/, integralsig, integralbkg );
 
             ftemplate->SetLineWidth(2);
-            ftemplate->DrawCopy("same");
-            hmc->DrawCopy("same"); // redraw points
 
             // TODO
             // TGraph with GP covariance
@@ -690,11 +689,15 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             for(int x=0; x < 300; x++){
                gpvar->SetPoint(x, x, ftemplate->Eval(x));
                gpvar->SetPointError(x, 0, sqrt(fptr->Fmbl_gp_var(x,masspnts[j],sb[k])));
+               //cout << x << " err = " << fptr->Fmbl_gp_var(x,masspnts[j],sb[k]) << endl;
             }
             gpvar->SetLineColor(2);
-            gpvar->SetFillStyle(3004);
-            gpvar->SetFillColor(4);
-            gpvar->Draw("E2");
+            //gpvar->SetFillStyle(3004);
+            gpvar->SetFillColor(5);
+            gpvar->Draw("E3");
+
+            ftemplate->DrawCopy("same");
+            hmc->DrawCopy("same"); // redraw points
 
             // pad 2
             pad2->cd();
@@ -734,7 +737,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                   double feval = ftemplate->Eval(hchi2->GetBinCenter(n));
                   if( binerr == 0 ) binerr = 1;
                   chi2 += pow( (bincontent-feval)/binerr, 2);
-                  if( j==1 and k==0 ) cout << hchi2->GetBinCenter(n) << ": " << chi2 << endl;
+                  //if( j==1 and k==0 ) cout << hchi2->GetBinCenter(n) << ": " << chi2 << endl;
                }
 
                if( k==0 ){
@@ -756,10 +759,13 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    
    // plot template as a function of top mass
    
+   // TODO
+   /*
    TDirectory *dir = fileout->mkdir( "mtshape" );
    dir->cd();
    for(unsigned int k=0; k < sizeof(sb)/sizeof(sb[0]); k++){ // sig,bkg
       for(double x=0; x <= rangembl; x+=10){ // bin of mbl
+         cout << "mbl: " << x << endl;
 
          stringstream ssmbl;
          ssmbl << x;
@@ -772,16 +778,16 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
          // graph with template value at mbl = x
          TGraphErrors *gtemplate = new TGraphErrors();
-         Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
+         Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm1, gnorm2 );
          fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
          fptr->aGPsig = aGPsig;
          fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
          fptr->aGPbkg = aGPbkg;
          // TODO
-         fptr->Asig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
-         fptr->Asig = Asig;
-         fptr->Abkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
-         fptr->Abkg = Abkg;
+         fptr->Ainv_sig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
+         fptr->Ainv_sig = Ainv_sig;
+         fptr->Ainv_bkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
+         fptr->Ainv_bkg = Ainv_bkg;
 
          TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
          int count=0;
@@ -841,6 +847,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
          delete fptr;
       }
    }
+*/
 
    fileout->cd();
 
@@ -870,7 +877,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
    // mbl likelihood
 
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm1, gnorm2 );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );

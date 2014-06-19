@@ -156,7 +156,7 @@ int main(int argc, char* argv[]){
             break;
 
          case 'g' :
-            fitter.gnorm = atof(optarg);
+            fitter.gnorm2 = atof(optarg);
             break;
 
          case 'p' :
@@ -311,9 +311,10 @@ int main(int argc, char* argv[]){
          // do GP training
          cout << "Training GP... ";
          // TODO
+         double m2llsig, m2llbkg;
          Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
-               fitter.lbnd, fitter.rbnd, fitter.gnorm );
-         fptr->TrainGP( hists_train_ );
+               fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
+         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
          cout << " done." << endl;
          fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
          fitter.aGPsig = fptr->aGPsig;
@@ -431,9 +432,10 @@ int main(int argc, char* argv[]){
 
             // do GP training
             // TODO
+            double m2llsig, m2llbkg;
             Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
-                  fitter.lbnd, fitter.rbnd, fitter.gnorm );
-            fptr->TrainGP( hists_train_ );
+                  fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
+            fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
             fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
             fitter.aGPsig = fptr->aGPsig;
             fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
@@ -511,7 +513,7 @@ int main(int argc, char* argv[]){
             fitchi2 = fitter.fitchi2;
             gplength_mbl = fitter.gplength_mbl;
             gplength_mt = fitter.gplength_mt;
-            gnorm = fitter.gnorm;
+            gnorm = fitter.gnorm2;
             lbound_mbl = fitter.lbnd;
             rbound_mbl = fitter.rbnd;
 
@@ -529,23 +531,55 @@ int main(int argc, char* argv[]){
 
    }
 
-   if( do_templates){
+   if( do_templates ){
+      
+      
+      Shapes * fptr2 = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
+            fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
+      fptr2->LearnGPparams( hists_train_ );
+      return 0;
+
 
       // do GP training
       cout << "Training GP... ";
+      double m2llsig, m2llbkg;
+      fitter.gplength_mbl = 21.2;
+      fitter.gplength_mt = 23.0;
+      fitter.gnorm1 = 4.3E-08;
+      fitter.gnorm2 = 4.82;
       Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
-            fitter.lbnd, fitter.rbnd, fitter.gnorm );
-      fptr->TrainGP( hists_train_ );
-      cout << " done." << endl;
+            fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
+      /*
+      for( double g=1.9E-7; g <= 3.0E-7; g+=1E-8 ){
+         fptr->gnorm1 = g;
+         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
+         cout << "gnorm = " << g << " ---> " << "M2LL (sig, bkg): "
+            << m2llsig << ", " << m2llbkg << endl;
+      }
+         fptr->gnorm1 = 2.8E-07;
+         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
+         */
+      
+      /*
+      for( double g=0.1; g <= 2; g+=0.1 ){
+         fptr->gnorm1 = 2.8E-07;
+         fptr->gnorm2 = g;
+         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
+         cout << "gnorm = " << g << " ---> " << "M2LL (sig, bkg): "
+            << m2llsig << ", " << m2llbkg << endl;
+      }
+      return 0;
+      */
+         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
       fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
       fitter.aGPsig = fptr->aGPsig;
       fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
       fitter.aGPbkg = fptr->aGPbkg;
       // TODO
-      fitter.Asig.ResizeTo( fptr->aGPsig.GetNoElements(), fptr->aGPsig.GetNoElements() );
-      fitter.Asig = fptr->Asig;
-      fitter.Abkg.ResizeTo( fptr->aGPbkg.GetNoElements(), fptr->aGPbkg.GetNoElements() );
-      fitter.Abkg = fptr->Abkg;
+      fitter.Ainv_sig.ResizeTo( fptr->aGPsig.GetNoElements(), fptr->aGPsig.GetNoElements() );
+      fitter.Ainv_sig = fptr->Ainv_sig;
+      fitter.Ainv_bkg.ResizeTo( fptr->aGPbkg.GetNoElements(), fptr->aGPbkg.GetNoElements() );
+      fitter.Ainv_bkg = fptr->Ainv_bkg;
 
       fitter.PlotTemplates( hists_train_ );
       for(int j=0; j < 8; j++){
@@ -582,3 +616,4 @@ int main(int argc, char* argv[]){
 
    return 0;
 }
+

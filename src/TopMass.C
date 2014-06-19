@@ -58,7 +58,8 @@ Fitter::Fitter(){
    // gaussian process length scales
    gplength_mbl = 13;
    gplength_mt = 32;
-   gnorm = 1.0;
+   gnorm1 = 1.0;
+   gnorm2 = 1.0;
 
 }
 
@@ -360,7 +361,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm1, gnorm2 );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -373,7 +374,7 @@ double Fitter::Min2LL(const double *x){
    delete fmbl_tot;
    delete fptr;
 
-   Shapes shape( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
+   Shapes shape( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm1, gnorm2 );
    shape.aGPsig.ResizeTo( aGPsig.GetNoElements() );
    shape.aGPsig = aGPsig;
    shape.aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -417,7 +418,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
 
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm );
+   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm1, gnorm2 );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );

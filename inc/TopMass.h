@@ -103,8 +103,8 @@ class Fitter{
       void PlotTemplates( map< string, map<string, TH1D*> >& );
 
       // TODO
-      TMatrixD Asig;
-      TMatrixD Abkg;
+      TMatrixD Ainv_sig;
+      TMatrixD Ainv_bkg;
       TVectorD aGPsig;
       TVectorD aGPbkg;
       TH1D* hmbl_bkg;
@@ -115,7 +115,7 @@ class Fitter{
       double fitchi2;
       double gplength_mbl;
       double gplength_mt;
-      double gnorm;
+      double gnorm1, gnorm2;
 
       double tsig_mbl_chi2 [8];
       double tbkg_mbl_chi2 [8];

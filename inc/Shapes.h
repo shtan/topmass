@@ -12,16 +12,17 @@ class Shapes{
 
    public:
 
-      Shapes( double, double, double, double );
+      Shapes( string, double, double, double, double );
       ~Shapes();
 
-      double Fmbl_tot(double*, double*);
-      double Fmbl_sig_param(double, double);
-      double Fmbl_sig_gp(double, double);
-      double Fmbl_bkg_gp(double, double);
+      double Ftot(double*, double*);
+      double Fsig_param(double, double);
+      double Fsig_gp(double, double);
+      double Fbkg_gp(double, double);
 
-      double lmbl, lmass, gnorm;
-      double lbmbl, rbmbl;
+      string name;
+      double lx, lmass, gnorm;
+      double lbx, rbx;
       vector<double> ptrain;
       TVectorD aGPsig;
       TVectorD aGPbkg;

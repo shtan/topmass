@@ -322,12 +322,12 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 double Fitter::Min2LL(const double *x){
 
    // normalization inside likelihood function (temp)
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
    fptr->aGPbkg = aGPbkg;
-   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Ftot, 0, rangembl, 5);
    fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0, 1.0 );
    double integralsig = fmbl_tot->Integral(0,rangembl);
    fmbl_tot->SetParameters( x[0], 0.0, 1.0, 1.0, 1.0 );
@@ -335,7 +335,7 @@ double Fitter::Min2LL(const double *x){
    delete fmbl_tot;
    delete fptr;
 
-   Shapes shape( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes shape( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
    shape.aGPsig.ResizeTo( aGPsig.GetNoElements() );
    shape.aGPsig = aGPsig;
    shape.aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
@@ -350,7 +350,7 @@ double Fitter::Min2LL(const double *x){
       for( unsigned int i=0; i < ev->mbls.size(); i++ ){
          if( ev->mbls[i] > rangembl ) continue;
          if( ev->mbls[i] > lbnd and ev->mbls[i] < rbnd ) continue;
-         double val = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
+         double val = shape.Ftot( &(ev->mbls[i]), pmbl );
          m2ll -= 2.0*ev->weight*log( val );
       }
 
@@ -378,12 +378,12 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
 
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
    fptr->aGPbkg = aGPbkg;
-   TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+   TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, rangembl, 5);
 
    string names [] = {"mbl","mbl_fit"};
    for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){

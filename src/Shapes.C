@@ -15,14 +15,15 @@ using namespace std;
 // constructor and destructor
 //
 
-Shapes::Shapes( double gplength_mbl, double gplength_mt,
-     double lbound_mbl, double rbound_mbl ){
+Shapes::Shapes( string var, double gplength_x, double gplength_mt,
+     double lbound_x, double rbound_x ){
 
+   name = var;
    // GP options
-   lmbl = gplength_mbl;
+   lx = gplength_x;
    lmass = gplength_mt;
-   lbmbl = lbound_mbl;
-   rbmbl = rbound_mbl;
+   lbx = lbound_x;
+   rbx = rbound_x;
    gnorm = 1.0;
    int ntrain = 100;
    double rtrain = 300;
@@ -38,7 +39,7 @@ Shapes::~Shapes(){
 // member definitions
 //
 
-double Shapes::Fmbl_tot(double *px, double *pp){
+double Shapes::Ftot(double *px, double *pp){
 
    double x = px[0];
    double mt = pp[0];
@@ -47,12 +48,12 @@ double Shapes::Fmbl_tot(double *px, double *pp){
    double integralsig = pp[3];
    double integralbkg = pp[4];
 
-   double val = norm*(k*Fmbl_sig_gp(x, mt)/integralsig + (1-k)*Fmbl_bkg_gp(x, mt)/integralbkg);
-   if( val <= 0 or (x > lbmbl and x < rbmbl) ) return 1E-10;
+   double val = norm*(k*Fsig_gp(x, mt)/integralsig + (1-k)*Fbkg_gp(x, mt)/integralbkg);
+   if( val <= 0 or (x > lbx and x < rbx) ) return 1E-10;
    else return val;
 }
 
-double Shapes::Fmbl_sig_param(double x, double mt){
+double Shapes::Fsig_param(double x, double mt){
 
    double par [9];
    par[0] = 0.04314 - 0.0001872*mt;
@@ -72,7 +73,7 @@ double Shapes::Fmbl_sig_param(double x, double mt){
    return gaus1+gaus2+landau;
 }
 
-double Shapes::Fmbl_sig_gp(double x, double mt){
+double Shapes::Fsig_gp(double x, double mt){
 
    double masspnts [] = {161.5, 163.5, 166.5, 169.5, 172.5, 175.5, 178.5, 181.5};
    int nmasses = 8;
@@ -81,14 +82,14 @@ double Shapes::Fmbl_sig_gp(double x, double mt){
    for(unsigned int i=0; i < ptrain.size(); i++){
       for(int j=0; j < nmasses; j++){
          fgp += aGPsig[i+j*ptrain.size()]
-            *GPkern( x, ptrain[i], lmbl, mt, masspnts[j], lmass, gnorm );
+            *GPkern( x, ptrain[i], lx, mt, masspnts[j], lmass, gnorm );
       }
    }
 
    return fgp;
 }
 
-double Shapes::Fmbl_bkg_gp(double x, double mt){
+double Shapes::Fbkg_gp(double x, double mt){
 
    double masspnts [] = {161.5, 163.5, 166.5, 169.5, 172.5, 175.5, 178.5, 181.5};
    int nmasses = 8;
@@ -97,17 +98,17 @@ double Shapes::Fmbl_bkg_gp(double x, double mt){
    for(unsigned int i=0; i < ptrain.size(); i++){
       for(int j=0; j < nmasses; j++){
          fgp += aGPbkg[i+j*ptrain.size()]
-            *GPkern( x, ptrain[i], lmbl, mt, masspnts[j], lmass, gnorm );
+            *GPkern( x, ptrain[i], lx, mt, masspnts[j], lmass, gnorm );
       }
    }
 
    return fgp;
 }
 
-double Shapes::GPkern(double x1, double x2, double lx, double m1, double m2, double lm,
+double Shapes::GPkern(double x1, double x2, double lsx, double m1, double m2, double lsm,
       double norm){
 
-   double kernel = norm*exp(-0.5*(pow( (x1-x2)/lx, 2)+pow( (m1-m2)/lm, 2)));
+   double kernel = norm*exp(-0.5*(pow( (x1-x2)/lsx, 2)+pow( (m1-m2)/lsm, 2)));
    return kernel;
 }
 
@@ -127,16 +128,16 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
       string smass = ssmass.str();
 
       // signal shape
-      hgp_sig.push_back( (TH1D*)hists_["mbl"]["ttbar"+smass+"_signal"]
+      hgp_sig.push_back( (TH1D*)hists_[name]["ttbar"+smass+"_signal"]
             ->Clone( ("hgp_sig"+smass).c_str()) );
       hgp_sig[i]->Scale( 1.0/hgp_sig[i]->Integral("width") );
 
       // background shape
-      hgp_bkg.push_back( (TH1D*)hists_["mbl"]["ttbar"+smass+"_mistag"]
+      hgp_bkg.push_back( (TH1D*)hists_[name]["ttbar"+smass+"_mistag"]
             ->Clone( ("hgp_bkg"+smass).c_str()) );
-      hgp_bkg[i]->Add( hists_["mbl"]["ttbar"+smass+"_hadronic"] );
-      hgp_bkg[i]->Add( hists_["mbl"]["ttbar"+smass+"_taus"] );
-      hgp_bkg[i]->Add( hists_["mbl"]["other"] );
+      hgp_bkg[i]->Add( hists_[name]["ttbar"+smass+"_hadronic"] );
+      hgp_bkg[i]->Add( hists_[name]["ttbar"+smass+"_taus"] );
+      hgp_bkg[i]->Add( hists_[name]["other"] );
       hgp_bkg[i]->Scale( 1.0/hgp_bkg[i]->Integral("width") );
 
    }
@@ -149,7 +150,7 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_ ){
          int jm = j % ntrain;
          int imass = i / ntrain;
          int jmass = j / ntrain;
-         K[i][j] = GPkern( ptrain[im], ptrain[jm], lmbl, masspnts[imass], masspnts[jmass], lmass,
+         K[i][j] = GPkern( ptrain[im], ptrain[jm], lx, masspnts[imass], masspnts[jmass], lmass,
               gnorm );
      }
    }

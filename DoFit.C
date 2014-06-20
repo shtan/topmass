@@ -286,7 +286,7 @@ int main(int argc, char* argv[]){
 
          // do GP training
          cout << "Training GP." << endl;
-         Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
+         Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt,
                fitter.lbnd, fitter.rbnd );
          fptr->TrainGP( hists_train_ );
          fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
@@ -401,7 +401,7 @@ int main(int argc, char* argv[]){
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
             // do GP trainin
-            Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
+            Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt,
                   fitter.lbnd, fitter.rbnd );
             fptr->TrainGP( hists_train_ );
             fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );

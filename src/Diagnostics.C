@@ -657,12 +657,12 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             hmc->SetMarkerStyle(20);
             hmc->DrawCopy();
 
-            Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+            Shapes * fptr = new Shapes( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
             fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
             fptr->aGPsig = aGPsig;
             fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
             fptr->aGPbkg = aGPbkg;
-            TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+            TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, rangembl, 5);
             ftemplate->SetNpx(500);
 
             // normalization inside likelihood function (temp)
@@ -731,12 +731,12 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
          // graph with template value at mbl = x
          TGraph *gtemplate = new TGraph();
-         Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+         Shapes * fptr = new Shapes( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
          fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
          fptr->aGPsig = aGPsig;
          fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
          fptr->aGPbkg = aGPbkg;
-         TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+         TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, rangembl, 5);
          int count=0;
          for(double m=160.0; m <= 183.0; m+=0.5){ // value of mt
             // normalization inside likelihood function (temp)
@@ -820,12 +820,12 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
    // mbl likelihood
 
-   Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd );
+   Shapes * fptr = new Shapes( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
    fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
    fptr->aGPsig = aGPsig;
    fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
    fptr->aGPbkg = aGPbkg;
-   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+   TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Ftot, 0, rangembl, 5);
 
    fmbl_tot->SetParameters( 161.5, 1.0, 1.0, 1.0, 1.0 );
    fmbl_tot->SetParameters( 161.5, 1.0, 1.0, fmbl_tot->Integral(0,rangembl), 1.0 );

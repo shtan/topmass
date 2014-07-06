@@ -127,12 +127,13 @@ double Shapes::Fmbl_gp_var(double x, double mt, string sb){
    //k.Print();
    //kT.Print();
 
+   //cout << "### " << c1 << " " << c2 << endl;
    return (c1-c2);
 }
 
 double Shapes::GPkern(double x1, double x2, double lx, double m1, double m2, double lm ){
 
-   double kernel = gnorm2*gnorm1*exp(-0.5*(pow( (x1-x2)/lx, 2)+pow( (m1-m2)/lm, 2)));
+   double kernel = 1E-06*gnorm2*gnorm1*exp(-0.5*(pow( (x1-x2)/lx, 2)+pow( (m1-m2)/lm, 2)));
    return kernel;
 }
 
@@ -243,6 +244,8 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
    bool status = 0;
    TMatrixDSym Asinv_sig = Cholsig.Invert(status);
    TMatrixDSym Asinv_bkg = Cholbkg.Invert(status);
+   Ainv_sig.Clear();
+   Ainv_bkg.Clear();
    Ainv_sig.ResizeTo( ntrain*nmasses, ntrain*nmasses );
    Ainv_bkg.ResizeTo( ntrain*nmasses, ntrain*nmasses );
    Ainv_sig = (TMatrixD)Asinv_sig;
@@ -264,6 +267,9 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
    }
 
    // alpha vector
+   aGPsig.Clear();
+   aGPbkg.Clear();
+
    aGPsig.ResizeTo( ntrain*nmasses );
    aGPsig = Ainv_sigtemp*ysig;
 
@@ -306,15 +312,31 @@ void Shapes::LearnGPparams( map< string, map<string, TH1D*> > & hists_ ){
 
    //fFunc = new ROOT::Math::Functor ( this, &Shapes::GPm2ll, 4 );
    fFunc = new ROOT::Math::Functor ( this, &Shapes::GPm2llX, 4 );
-   gMinuit->SetTolerance(0.1);
+   gMinuit->SetTolerance(1000.0);
    gMinuit->SetFunction( *fFunc );
-   gMinuit->SetLimitedVariable(0, "gpnorm1", 1.0E-07, 1E-08, 0.0, 1.0);
-   gMinuit->SetLimitedVariable(1, "gpnorm2", 4.0, 0.1, 0.0, 50.0);
-   gMinuit->SetLowerLimitedVariable(2, "lmbl", 13, 1, 0.0);
-   gMinuit->SetLimitedVariable(3, "lmass", 32, 1, 0.0, 75.00);
+   // TODO
+   //gMinuit->SetFixedVariable(0, "gpnorm1", 1.0);
+   gMinuit->SetLowerLimitedVariable(0, "gpnorm1", 5.0, 0.1, 0.0);
+   //gMinuit->SetLowerLimitedVariable(1, "gpnorm2", 10.0, 0.1, 0.0);
+   //gMinuit->SetLowerLimitedVariable(2, "lmbl", 15, 1, 0.0);
+   //gMinuit->SetLowerLimitedVariable(3, "lmass", 30, 1, 0.0);
+   gMinuit->SetFixedVariable(1, "gpnorm2", 11.8);
+   gMinuit->SetFixedVariable(2, "lmbl", 13.4);
+   gMinuit->SetFixedVariable(3, "lmass", 17.8);
 
    // set training hist and minimize
    hists_train_ = &hists_;
+
+   // TODO
+   /*
+   for(int i=1; i < 15; i++){
+      double xtemp [] = {10.0*i,10.0*i,10.0*i,10.0*i};
+      const double *pxtemp = xtemp;
+      double m2ll = GPm2llX( pxtemp );
+      cout << "i = " << i << " ---> m2ll = " << m2ll << endl;
+   }
+   return;
+*/
 
    gMinuit->Minimize();
    return;
@@ -336,7 +358,7 @@ double Shapes::GPm2ll( const double *x ){
 
 double Shapes::GPm2llX( const double *x ){
    cout << "gnorm: " << x[0] << ", " << x[1] << endl;
-   cout << "lmbl, lmt: " << x[1] << ", " << x[2] << endl;
+   cout << "lmbl, lmt: " << x[2] << ", " << x[3] << endl;
 
    gnorm1 = x[0];
    gnorm2 = x[1];
@@ -365,7 +387,7 @@ double Shapes::GPm2llX( const double *x ){
    int ntrain = 100;
    double rtrain = 300;
 
-   int nval = 4;
+   int nval = 3;
    double m2ll_tot = 0;
    for(int c=0; c < nval; c++){ // n-fold cross validation
 
@@ -387,8 +409,15 @@ double Shapes::GPm2llX( const double *x ){
          for(int j=0; j < nmasses; j++){
 
             double mean = Fmbl_gp(ptrainX[i],masspnts[j],"sig");
+            // TODO
             double var = Fmbl_gp_var(ptrainX[i],masspnts[j],"sig");
+            //double var = pow(hgp_sig[j]->GetBinError( hgp_sig[j]->FindBin(ptrainX[i]) ),2);
             double yi = hgp_sig[j]->GetBinContent( hgp_sig[j]->FindBin(ptrainX[i]) );
+
+            if( var <= 0 ){
+               //cout << "NEGATIVE VARIANCE IN GP: " << var << "  ----> setting to minimum" << endl;
+               var = 1E-10;
+            }
 
             m2ll += log(var) + pow(mean-yi,2)/var + log(2*TMath::Pi());
 

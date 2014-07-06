@@ -430,6 +430,26 @@ int main(int argc, char* argv[]){
             fitter.DeclareHists( hists_fit_bkgcontrol_, "fit_bkgcontrol" );
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
+            // TODO
+            
+            fitter.gplength_mbl = 13;
+            //fitter.gplength_mt = 18;
+            fitter.gplength_mt = 32;
+            //fitter.gnorm1 = 1.5;
+            //fitter.gnorm2 = 12;
+            //fitter.gnorm1 = 30;
+            //fitter.gnorm2 = 1;
+            fitter.gnorm1 = 1E6;
+            fitter.gnorm2 = 3E4;
+            
+            /*
+            fitter.gplength_mbl = 3.98;
+            fitter.gplength_mt = 12.49;
+            fitter.gnorm1 = 15.8;
+            fitter.gnorm2 = 11.8;
+            */
+
+
             // do GP training
             // TODO
             double m2llsig, m2llbkg;
@@ -534,19 +554,24 @@ int main(int argc, char* argv[]){
    if( do_templates ){
       
       
+      /*
       Shapes * fptr2 = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
             fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
       fptr2->LearnGPparams( hists_train_ );
       return 0;
-
+*/
 
       // do GP training
       cout << "Training GP... ";
       double m2llsig, m2llbkg;
-      fitter.gplength_mbl = 21.2;
-      fitter.gplength_mt = 23.0;
-      fitter.gnorm1 = 4.3E-08;
-      fitter.gnorm2 = 4.82;
+      // TODO
+      fitter.gplength_mbl = 13;
+      //fitter.gplength_mt = 18;
+      fitter.gplength_mt = 32;
+      //fitter.gnorm1 = 1.5;
+      //fitter.gnorm2 = 12;
+      fitter.gnorm1 = 1;
+      fitter.gnorm2 = 1;
       Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
             fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
       /*

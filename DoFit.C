@@ -439,7 +439,7 @@ int main(int argc, char* argv[]){
             //fitter.gnorm2 = 12;
             //fitter.gnorm1 = 30;
             //fitter.gnorm2 = 1;
-            fitter.gnorm1 = 1E6;
+            fitter.gnorm1 = 1.0/3E4;
             fitter.gnorm2 = 3E4;
             
             /*

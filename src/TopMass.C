@@ -50,6 +50,7 @@ Fitter::Fitter(){
 
    // fit range
    rangembl = 300;
+   range220 = 250;
    lbnd = 0;
    rbnd = 0;
 
@@ -298,10 +299,11 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    gMinuit->SetTolerance(1.0);
    gMinuit->SetPrintLevel(3);
 
-   fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
+   fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 3 );
    gMinuit->SetFunction( *fFunc );
    gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
    gMinuit->SetLimitedVariable(1, "norm", 0.7, 0.1, 0, 1.0);
+   gMinuit->SetLimitedVariable(2, "norm220", 0.7, 0.1, 0, 1.0);
    //gMinuit->SetFixedVariable(0, "topMass", 172.5);
    //gMinuit->SetFixedVariable(1, "norm", 0.70712);
 
@@ -320,6 +322,65 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 }
 
 double Fitter::Min2LL(const double *x){
+
+   string names [] = {"mbl","mt2_220_nomatchmbl"};
+   double gplengths [] = {gplength_mbl, gplength_220};
+   TVectorD aGPsigs [] = {aGPsig, aGPsig220};
+   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg220};
+   double ranges [] = {rangembl, range220};
+
+   double m2ll = 0;
+
+   for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){ // distributions
+
+   // normalization inside likelihood function (temp)
+   Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mt, lbnd, rbnd );
+   fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
+   fptr->aGPsig = aGPsigs[i];
+   fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
+   fptr->aGPbkg = aGPbkgs[i];
+   TF1 *fmbl_tot = new TF1( ("f"+names[i]+"_tot").c_str(), fptr, &Shapes::Ftot, 0, rangembl, 5);
+   fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0, 1.0 );
+   double integralsig = fmbl_tot->Integral(0,ranges[i]);
+   fmbl_tot->SetParameters( x[0], 0.0, 1.0, 1.0, 1.0 );
+   double integralbkg = fmbl_tot->Integral(0,ranges[i]);
+   delete fmbl_tot;
+   delete fptr;
+
+   Shapes shape( names[i], gplengths[i], gplength_mt, lbnd, rbnd );
+   shape.aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
+   shape.aGPsig = aGPsigs[i];
+   shape.aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
+   shape.aGPbkg = aGPbkgs[i];
+
+   double pmbl [] = {x[0], x[i+1], 1.0, integralsig, integralbkg};
+//   double m2ll = 0;
+   // evaluate likelihood
+   for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++ ){
+      if( !(ev->fit_event) ) continue;
+
+      if (i == 0){
+         for( unsigned int j=0; j < ev->mbls.size(); j++ ){
+            if( ev->mbls[j] > ranges[i] ) continue;
+            if( ev->mbls[j] > lbnd and ev->mbls[j] < rbnd ) continue;
+            double val = shape.Ftot( &(ev->mbls[j]), pmbl );
+            m2ll -= 2.0*ev->weight*log( val );
+         }
+      }
+      else if (i == 1){
+         if( ev->mt2_220 > ranges[i] ) continue;
+         if( ev->mt2_220 > lbnd and ev->mt2_220 < rbnd ) continue;
+         double val = shape.Ftot( &(ev->mt2_220), pmbl );
+         m2ll -= 2.0*ev->weight*log( val );
+      }
+
+   }
+   }
+
+   return m2ll;
+}
+
+double Fitter::Min2LL_individual(const double *x){
 
    // normalization inside likelihood function (temp)
    Shapes * fptr = new Shapes( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
@@ -378,15 +439,24 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
 
-   Shapes * fptr = new Shapes( "mbl", gplength_mbl, gplength_mt, lbnd, rbnd );
-   fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
-   fptr->aGPsig = aGPsig;
-   fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
-   fptr->aGPbkg = aGPbkg;
-   TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, rangembl, 5);
+   string names [] = {"mbl","mbl_fit","mt2_220_nomatchmbl"};
+   string fakenames [] = {"mbl","mbl","mt2_220_nomatchmbl"};
+   double gplengths [] = {gplength_mbl, gplength_mbl, gplength_220};
+   TVectorD aGPsigs [] = {aGPsig, aGPsig, aGPsig220};
+   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg, aGPbkg220};
+   double ranges [] = {rangembl, rangembl, range220};
+   double xmin1s [] = {xmin[1], xmin[1], xmin[2]};
 
-   string names [] = {"mbl","mbl_fit"};
+   double chi2 = 0;
+
    for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){
+
+      Shapes * fptr = new Shapes( fakenames[i], gplengths[i], gplength_mt, lbnd, rbnd );
+      fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
+      fptr->aGPsig = aGPsigs[i];
+      fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
+      fptr->aGPbkg = aGPbkgs[i];
+      TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, ranges[i], 5);
 
       TCanvas *canvas = new TCanvas( ("c_"+names[i]).c_str(), ("c_"+names[i]).c_str(), 800, 800);
       canvas->SetFillColor(0);
@@ -435,18 +505,18 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
       // normalization inside likelihood function (temp)
       ftemplate->SetParameters( xmin[0], 1.0, 1.0, 1.0, 1.0 );
-      double integralsig = ftemplate->Integral(0,rangembl);
+      double integralsig = ftemplate->Integral(0,ranges[i]);
       ftemplate->SetParameters( xmin[0], 0.0, 1.0, 1.0, 1.0 );
-      double integralbkg = ftemplate->Integral(0,rangembl);
-      ftemplate->SetParameters( xmin[0], xmin[1],
+      double integralbkg = ftemplate->Integral(0,ranges[i]);
+      ftemplate->SetParameters( xmin[0], xmin1s[i],
             hdata->Integral("width"), integralsig, integralbkg );
 
       ftemplate->SetLineWidth(2);
       ftemplate->DrawCopy("same");
       hdata->DrawCopy("same"); // redraw points
 
-      double chi2 = 0;
-      if( i==0 ){
+      //double chi2 = 0;
+      if( i!=1 ){
          for(int n=0; n <= hdata->GetNbinsX(); n++){
             double bincontent = hdata->GetBinContent(n);
             double binerr = hdata->GetBinError(n);
@@ -454,7 +524,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
             if( binerr == 0 ) binerr = 1;
             chi2 += pow( (bincontent-feval)/binerr, 2);
          }
-         fitchi2 = chi2;
+         //fitchi2 = chi2;
       }
 
       // pad 2
@@ -488,11 +558,17 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
       delete canvas;
       delete func;
+      delete fptr;
+      delete ftemplate;
+
    }
+
+   fitchi2 = chi2;
 
    fileout->Close();
    return;
 
+/*
    //
    // plot likelihood near minimum
    //
@@ -575,7 +651,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    cLmbl->cd();
    hLmbl->Draw("colz");
    cLmbl->Write("cLmbl");
-
+*/
    
    /*
    // 2 sigma contour
@@ -599,10 +675,10 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    */
 
    fileout->Close();
-
+/*
    delete fptr;
    delete ftemplate;
-
+*/
    return;
 }
 

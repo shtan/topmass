@@ -100,21 +100,28 @@ class Fitter{
       void FillHists( map< string, map<string, TH1D*> >&, vector<Event>&, bool=false );
       void PrintHists( map< string, map<string, TH1D*> >& );
       void PlotTemplates( map< string, map<string, TH1D*> >& );
+      void PlotTemplatesOld( map< string, map<string, TH1D*> >& );
 
       TVectorD aGPsig;
       TVectorD aGPbkg;
       TH1D* hmbl_bkg;
+      TVectorD aGPsig220;
+      TVectorD aGPbkg220;
+      TH1D* h221_bkg;
 
       double rangembl;
+      double range220;
       double rbnd, lbnd;
       bool compute_profile;
       double fitchi2;
       double gplength_mbl;
+      double gplength_220;
       double gplength_mt;
       
    private:
 
       double Min2LL(const double*);
+      double Min2LL_individual(const double*);
 
       ROOT::Math::IMultiGenFunction* fFunc;
 

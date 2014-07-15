@@ -24,7 +24,8 @@ void print_usage(){
    cout << setw(25) << "\t-p --profile" << "Run the likelihood profile.\n";
    cout << setw(25) << "\t-m --masspnt  <value>" << "If running on mc, use masspoint indicated.\n";
    cout << setw(25) << "\t-b --lmbl" << "Set the mbl lengthscale.\n";
-   cout << setw(25) << "\t-t --lmbl" << "Set the mt lengthscale.\n";
+   cout << setw(25) << "\t-2 --l220" << "Set the mt2_220 lengthscale.\n";
+   cout << setw(25) << "\t-t --lmt" << "Set the mt lengthscale.\n";
    cout << setw(25) << "\t-l --lbnd" << "Left bound for exclusion.\n";
    cout << setw(25) << "\t-r --rbnd" << "Right bound for exclusion.\n";
    cout << setw(25) << "\t-o --bootstrap" << "Turn on bootstrapping.\n";
@@ -51,9 +52,11 @@ int main(int argc, char* argv[]){
    int fitstatus=-1;
    double mt=0, mt_err=0;
    double kmbl=0, kmbl_err=0;
+   double k220=0, k220_err=0;
    double mcmass=0;
    double fitchi2=0;
-   double gplength_mbl=0;
+   double gplength_mbl=-1;
+   double gplength_220=-1;
    double gplength_mt=0;
    double lbound_mbl=0;
    double rbound_mbl=0;
@@ -65,9 +68,12 @@ int main(int argc, char* argv[]){
    tree->Branch("mt_err", &mt_err);
    tree->Branch("kmbl", &kmbl);
    tree->Branch("kbml_err", &kmbl_err);
+   tree->Branch("k220", &k220);
+   tree->Branch("k220_err", &k220_err);
    tree->Branch("mcmass", &mcmass);
    tree->Branch("fitchi2", &fitchi2);
    tree->Branch("gplength_mbl", &gplength_mbl);
+   tree->Branch("gplength_220", &gplength_220);
    tree->Branch("gplength_mt", &gplength_mt);
    tree->Branch("lbound_mbl", &lbound_mbl);
    tree->Branch("rbound_mbl", &rbound_mbl);
@@ -79,8 +85,10 @@ int main(int argc, char* argv[]){
    int do_diagnostics = 0;
    int use_data = 0;
    float masspnt = 0;
-   float lengthscale_mbl = 13;
-   float lengthscale_mt = 32;
+   float lengthscale_mbl = -1;
+   float lengthscale_220 = -1;
+   float lengthscale_mt_mbl = 32;
+   float lengthscale_mt_220 = 32;
    int do_bootstrap = 0;
 
    struct option longopts[] = {
@@ -91,7 +99,9 @@ int main(int argc, char* argv[]){
       { "profile",      no_argument,         0,                'p' },
       { "masspnt",      required_argument,   0,                'm' },
       { "lmbl",         required_argument,   0,                'b' },
-      { "lmt",          required_argument,   0,                't' },
+      { "l220",         required_argument,   0,                '2' },
+      { "lmt_mbl",      required_argument,   0,                't' },
+      { "lmt_220",      required_argument,   0,                '6' },
       { "lbnd",         required_argument,   0,                'l' },
       { "rbnd",         required_argument,   0,                'r' },
       { "bootstrap",    no_argument,         &do_bootstrap,    'o' },
@@ -99,7 +109,7 @@ int main(int argc, char* argv[]){
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdahpm:b:t:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdahpm:b:2:t:6:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -126,8 +136,16 @@ int main(int argc, char* argv[]){
             lengthscale_mbl = atof(optarg);
             break;
 
+         case '2' :
+            lengthscale_220 = atof(optarg);
+            break;
+
          case 't' :
-            lengthscale_mt = atof(optarg);
+            lengthscale_mt_mbl = atof(optarg);
+            break;
+
+         case '6' :
+            lengthscale_mt_220 = atof(optarg);
             break;
 
          case 'l' :
@@ -169,8 +187,16 @@ int main(int argc, char* argv[]){
       }
    }
 
+   if (lengthscale_mbl == -1 and lengthscale_220 == -1 and do_fit == 1){
+      std::cout << "At least one variable needed to do fit.  Input at least one lengthscale." << std::endl;
+      print_usage();
+      return -1;
+   }
+
    fitter.gplength_mbl = lengthscale_mbl;
-   fitter.gplength_mt = lengthscale_mt;
+   fitter.gplength_220 = lengthscale_220;
+   fitter.gplength_mt_mbl = lengthscale_mt_mbl;
+   fitter.gplength_mt_220 = lengthscale_mt_220;
 
    fitter.LoadDatasets( datasets );
 
@@ -400,14 +426,24 @@ int main(int argc, char* argv[]){
             fitter.DeclareHists( hists_fit_bkgcontrol_, "fit_bkgcontrol" );
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
-            // do GP trainin
-            Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt,
+            // do GP training
+
+            Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt_mbl,
+                  fitter.lbnd, fitter.rbnd );
+            Shapes * fptr220 = new Shapes( "mt2_220_nomatchmbl", fitter.gplength_220, fitter.gplength_mt_220,
                   fitter.lbnd, fitter.rbnd );
             fptr->TrainGP( hists_train_ );
+            fptr220->TrainGP( hists_train_ );
+
             fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
             fitter.aGPsig = fptr->aGPsig;
             fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
             fitter.aGPbkg = fptr->aGPbkg;
+
+            fitter.aGPsig220.ResizeTo( fptr220->aGPsig.GetNoElements() );
+            fitter.aGPsig220 = fptr220->aGPsig;
+            fitter.aGPbkg220.ResizeTo( fptr220->aGPbkg.GetNoElements() );
+            fitter.aGPbkg220 = fptr220->aGPbkg;
 
             typedef map<string, TH1D*> tmap;
             typedef map<string, tmap> hmap;
@@ -419,7 +455,7 @@ int main(int argc, char* argv[]){
                   }
                }
             }
-            fitter.PlotTemplates( hists_train_ );
+//            fitter.PlotTemplates( hists_train_ );
 
             // events for fitting, hists for training
             fitter.RunMinimizer( eventvec_fit );
@@ -437,8 +473,11 @@ int main(int argc, char* argv[]){
             kmbl = par[1];
             mt_err = par_err[0];
             kmbl_err = par_err[1];
+            k220 = par[2];
+            k220_err = par_err[2];
             fitchi2 = fitter.fitchi2;
             gplength_mbl = lengthscale_mbl;
+            gplength_220 = lengthscale_220;
             gplength_mt = lengthscale_mt;
             lbound_mbl = fitter.lbnd;
             rbound_mbl = fitter.rbnd;

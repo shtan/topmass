@@ -633,6 +633,28 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
    fitchi2 = chi2;
 
+   /*
+   // 2 sigma contour
+   unsigned int npnts_contour = 100;
+   gMinuit->SetErrorDef(4); // note 4 and not 2
+   double *x2s = new double[npnts_contour];
+   double *y2s = new double[npnts_contour];
+   gMinuit->Contour(0, 1, npnts_contour, x2s, y2s); // par1, par2, numpnts, x, y
+   TGraph *gs2 = new TGraph(npnts_contour, x2s, y2s);
+   gs2->SetLineColor(5);
+   gs2->Draw("same C");
+
+   // 1 sigma contour
+   gMinuit->SetErrorDef(1); // note 4 and not 2
+   double *xs = new double[100];
+   double *ys = new double[100];
+   gMinuit->Contour(0, 1, npnts_contour, xs, ys); // par1, par2, numpnts, x, y
+   TGraph *gs = new TGraph(npnts_contour, xs, ys);
+   gs->SetLineColor(5);
+   gs->Draw("same C");
+   */
+
+
    fileout->Close();
    return;
 

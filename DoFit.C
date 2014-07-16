@@ -57,7 +57,8 @@ int main(int argc, char* argv[]){
    double fitchi2=0;
    double gplength_mbl=-1;
    double gplength_220=-1;
-   double gplength_mt=0;
+   double gplength_mt_mbl=0;
+   double gplength_mt_220=0;
    double lbound_mbl=0;
    double rbound_mbl=0;
    
@@ -74,7 +75,8 @@ int main(int argc, char* argv[]){
    tree->Branch("fitchi2", &fitchi2);
    tree->Branch("gplength_mbl", &gplength_mbl);
    tree->Branch("gplength_220", &gplength_220);
-   tree->Branch("gplength_mt", &gplength_mt);
+   tree->Branch("gplength_mt_mbl", &gplength_mt_mbl);
+   tree->Branch("gplength_mt_220", &gplength_mt_220);
    tree->Branch("lbound_mbl", &lbound_mbl);
    tree->Branch("rbound_mbl", &rbound_mbl);
 
@@ -99,8 +101,12 @@ int main(int argc, char* argv[]){
       { "profile",      no_argument,         0,                'p' },
       { "masspnt",      required_argument,   0,                'm' },
       { "lmbl",         required_argument,   0,                'b' },
+      // If the lmbl flag is not entered, lengthscale_mbl has default value -1.
+      // This instructs the code to not use mbl in the fit.
+      // The same goes for each other kinematic variable.
       { "l220",         required_argument,   0,                '2' },
       { "lmt_mbl",      required_argument,   0,                't' },
+      // Top mass lengthscales for mbl and 220 are entered separately
       { "lmt_220",      required_argument,   0,                '6' },
       { "lbnd",         required_argument,   0,                'l' },
       { "rbnd",         required_argument,   0,                'r' },
@@ -187,6 +193,8 @@ int main(int argc, char* argv[]){
       }
    }
 
+   // Check that at least one kinematic variable's lengthscale has been entered.
+   // Any additional distributions need to be added here
    if (lengthscale_mbl == -1 and lengthscale_220 == -1 and do_fit == 1){
       std::cout << "At least one variable needed to do fit.  Input at least one lengthscale." << std::endl;
       print_usage();
@@ -268,7 +276,7 @@ int main(int argc, char* argv[]){
       map< string, map<string, TH1D*> > hists_fit_;
       map< string, map<string, TH1D*> > hists_fit_bkgcontrol_;
 
-      if( use_data ){
+      if( use_data ){ // added 220 distribution to the data fit too, but haven't tested it
          for(vector<Event>::iterator ev = eventvec_datamc.begin(); ev < eventvec_datamc.end();ev++){
             if( ev->type.find("data") != string::npos ){
                if( ev->type.find("bkgcontrol") == string::npos ){
@@ -312,13 +320,28 @@ int main(int argc, char* argv[]){
 
          // do GP training
          cout << "Training GP." << endl;
-         Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt,
-               fitter.lbnd, fitter.rbnd );
-         fptr->TrainGP( hists_train_ );
-         fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
-         fitter.aGPsig = fptr->aGPsig;
-         fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
-         fitter.aGPbkg = fptr->aGPbkg;
+
+         // GP training for mbl
+         if ( lengthscale_mbl != -1){
+            Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt_mbl,
+                  fitter.lbnd, fitter.rbnd );
+            fptr->TrainGP( hists_train_ );
+            fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
+            fitter.aGPsig = fptr->aGPsig;
+            fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
+            fitter.aGPbkg = fptr->aGPbkg;
+         }
+
+         // GP training for 220
+         if ( lengthscale_220 != -1){
+            Shapes * fptr220 = new Shapes( "mt2_220_nomatchmbl", fitter.gplength_220, fitter.gplength_mt_220,
+                  fitter.lbnd, fitter.rbnd );
+            fptr220->TrainGP( hists_train_ );
+            fitter.aGPsig220.ResizeTo( fptr220->aGPsig.GetNoElements() );
+            fitter.aGPsig220 = fptr220->aGPsig;
+            fitter.aGPbkg220.ResizeTo( fptr220->aGPbkg.GetNoElements() );
+            fitter.aGPbkg220 = fptr220->aGPbkg;
+         }
 
          fitter.PlotTemplates( hists_train_ );
 
@@ -333,9 +356,15 @@ int main(int argc, char* argv[]){
          const double *par_err = fitter.gMinuit->Errors();
          mt = par[0];
          kmbl = par[1];
+         k220 = par[2];
          mt_err = par_err[0];
          kmbl_err = par_err[1];
+         k220_err = par_err[2];
          fitchi2 = fitter.fitchi2;
+         gplength_mbl = lengthscale_mbl;
+         gplength_220 = lengthscale_220;
+         gplength_mt_mbl = lengthscale_mt_mbl;
+         gplength_mt_220 = lengthscale_mt_220;
 
          tree->Fill();
 
@@ -427,23 +456,29 @@ int main(int argc, char* argv[]){
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
             // do GP training
+            // train GP for mbl
+            if (lengthscale_mbl != -1){
+               Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt_mbl,
+                     fitter.lbnd, fitter.rbnd );
+               fptr->TrainGP( hists_train_ );
 
-            Shapes * fptr = new Shapes( "mbl", fitter.gplength_mbl, fitter.gplength_mt_mbl,
-                  fitter.lbnd, fitter.rbnd );
-            Shapes * fptr220 = new Shapes( "mt2_220_nomatchmbl", fitter.gplength_220, fitter.gplength_mt_220,
-                  fitter.lbnd, fitter.rbnd );
-            fptr->TrainGP( hists_train_ );
-            fptr220->TrainGP( hists_train_ );
+               fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
+               fitter.aGPsig = fptr->aGPsig;
+               fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
+               fitter.aGPbkg = fptr->aGPbkg;
+            }
 
-            fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
-            fitter.aGPsig = fptr->aGPsig;
-            fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
-            fitter.aGPbkg = fptr->aGPbkg;
+            // train GP for 220
+            if (lengthscale_220 != -1){
+               Shapes * fptr220 = new Shapes( "mt2_220_nomatchmbl", fitter.gplength_220, fitter.gplength_mt_220,
+                     fitter.lbnd, fitter.rbnd );
+               fptr220->TrainGP( hists_train_ );
 
-            fitter.aGPsig220.ResizeTo( fptr220->aGPsig.GetNoElements() );
-            fitter.aGPsig220 = fptr220->aGPsig;
-            fitter.aGPbkg220.ResizeTo( fptr220->aGPbkg.GetNoElements() );
-            fitter.aGPbkg220 = fptr220->aGPbkg;
+               fitter.aGPsig220.ResizeTo( fptr220->aGPsig.GetNoElements() );
+               fitter.aGPsig220 = fptr220->aGPsig;
+               fitter.aGPbkg220.ResizeTo( fptr220->aGPbkg.GetNoElements() );
+               fitter.aGPbkg220 = fptr220->aGPbkg;
+            }
 
             typedef map<string, TH1D*> tmap;
             typedef map<string, tmap> hmap;
@@ -455,7 +490,7 @@ int main(int argc, char* argv[]){
                   }
                }
             }
-//            fitter.PlotTemplates( hists_train_ );
+            fitter.PlotTemplates( hists_train_ );
 
             // events for fitting, hists for training
             fitter.RunMinimizer( eventvec_fit );
@@ -465,6 +500,7 @@ int main(int argc, char* argv[]){
 
 
             // fill results tree
+            // any additional variables need to be added here
             mcmass = mass;
             fitstatus = fitter.gMinuit->Status();
             const double *par = fitter.gMinuit->X();
@@ -478,7 +514,8 @@ int main(int argc, char* argv[]){
             fitchi2 = fitter.fitchi2;
             gplength_mbl = lengthscale_mbl;
             gplength_220 = lengthscale_220;
-            gplength_mt = lengthscale_mt;
+            gplength_mt_mbl = lengthscale_mt_mbl;
+            gplength_mt_220 = lengthscale_mt_220;
             lbound_mbl = fitter.lbnd;
             rbound_mbl = fitter.rbnd;
 

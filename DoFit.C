@@ -22,6 +22,7 @@ void print_usage(){
    cout << setw(25) << "\t-f --fit" << "Turn on fit.\n";
    cout << setw(25) << "\t-d --diagnostics" << "Turn on diagnostics.\n";
    cout << setw(25) << "\t-e --templates" << "Turn on template plots.\n";
+   cout << setw(25) << "\t-x --learnparams" << "Do a fit to learn the GP hyperparameters.\n";
    cout << setw(25) << "\t-a --data" << "Run the fit on data (use full mc for training).\n";
    cout << setw(25) << "\t-p --profile" << "Run the likelihood profile.\n";
    cout << setw(25) << "\t-m --masspnt  <value>" << "If running on mc, use masspoint indicated.\n";
@@ -91,6 +92,7 @@ int main(int argc, char* argv[]){
    float masspnt = 0;
    int do_bootstrap = 0;
    int do_templates = 0;
+   int do_learnparams = 0;
    double fracevts = -1;
 
    struct option longopts[] = {
@@ -98,12 +100,13 @@ int main(int argc, char* argv[]){
       { "fit",          no_argument,         &do_fit,          'f' },
       { "diagnostics",  no_argument,         &do_diagnostics,  'd' },
       { "templates",    no_argument,         &do_templates,    'e' },
+      { "learnparams",  no_argument,         &do_learnparams,  'x' },
       { "data",         no_argument,         &use_data,        'a' },
       { "profile",      no_argument,         0,                'p' },
       { "masspnt",      required_argument,   0,                'm' },
       { "lmbl",         required_argument,   0,                'b' },
       { "lmt",          required_argument,   0,                't' },
-      { "gnorm",       required_argument,   0,                'g' },
+      { "gnorm",        required_argument,   0,                'g' },
       { "lbnd",         required_argument,   0,                'l' },
       { "rbnd",         required_argument,   0,                'r' },
       { "bootstrap",    no_argument,         &do_bootstrap,    'o' },
@@ -112,7 +115,7 @@ int main(int argc, char* argv[]){
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdeahpon:m:b:t:g:l:r:c:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdexahpon:m:b:t:g:l:r:c:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -129,6 +132,10 @@ int main(int argc, char* argv[]){
 
          case 'e' :
             do_templates = 1;
+            break;
+
+         case 'x' :
+            do_learnparams = 1;
             break;
 
          case 'a' :
@@ -265,7 +272,12 @@ int main(int argc, char* argv[]){
       map< string, map<string, TH1D*> > hists_fit_bkgcontrol_;
 
       if( use_data ){
-         // TODO
+
+         //
+         // turn this feature off for now -- will need to clean up later.
+         //
+
+         /*
          cout << "REMINDER: EVENT WEIGHTS IN MC" << endl;
          for(vector<Event>::iterator ev = eventvec_datamc.begin(); ev < eventvec_datamc.end();ev++){
             if( ev->type.find("data") != string::npos ){
@@ -343,6 +355,7 @@ int main(int argc, char* argv[]){
          eventvec_fit_bkgcontrol.clear();
          fitter.DeleteHists( hists_fit_ );
          fitter.DeleteHists( hists_fit_bkgcontrol_ );
+         */
 
       }else{ // loop over mc masses
 
@@ -382,27 +395,7 @@ int main(int argc, char* argv[]){
                }
             }
 
-            // TODO
             fitter.ReweightMC( eventvec_fit, dname );
-            /* 
-            // define mc event weights -- ttbar events must have an average weight of 1
-            double weight_norm = 0;
-            double nevts_ttbar = 0;
-            for(vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
-               if( ev->type.find(dname) != string::npos ){
-                  weight_norm += ev->weight;
-                  nevts_ttbar++;
-               }
-            }
-            cout << "nevts = " << nevts_ttbar << " weight_norm = " << weight_norm << endl;
-            // reweight
-            double wgt=0;
-            for(vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
-               ev->weight *= 1.0*nevts_ttbar/weight_norm;
-               wgt += ev->weight;
-            }
-            cout << "wgt = " << wgt << endl;
-            */
 
             // flag events to be fitted
             for( vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
@@ -430,26 +423,12 @@ int main(int argc, char* argv[]){
             fitter.DeclareHists( hists_fit_bkgcontrol_, "fit_bkgcontrol" );
             fitter.FillHists( hists_fit_bkgcontrol_, eventvec_fit_bkgcontrol, true );
 
-            // TODO
-            
-            //fitter.gplength_mbl = 13;
-            //fitter.gplength_mt = 18;
-            //fitter.gplength_mt = 32;
-            //fitter.gnorm1 = 1.5;
-            //fitter.gnorm2 = 12;
-            //fitter.gnorm1 = 30;
-            //fitter.gnorm2 = 1;
-            //fitter.gnorm1 = 1.0/3E4;
-            //fitter.gnorm2 = 3E4;
-            
             fitter.gplength_mbl = 13;
             fitter.gplength_mt = 18;
             fitter.gnorm1 = 1.5;
             fitter.gnorm2 = 12;
 
-
             // do GP training
-            // TODO
             double m2llsig, m2llbkg;
             Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
                   fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
@@ -458,48 +437,6 @@ int main(int argc, char* argv[]){
             fitter.aGPsig = fptr->aGPsig;
             fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
             fitter.aGPbkg = fptr->aGPbkg;
-
-            // TODO
-            //
-            /*
-            cout << "Testing integral..." << endl;
-            //double masspnts [] = {161.5,163.5,166.5,169.5,172.5,175.5,178.5,181.5};
-            for( int m=160; m < 182; m++ ){
-               cout << "mass = " << m << ": " << endl;
-
-               TF1 *fmbl_tot = new TF1("fmbl_tot", fptr, &Shapes::Fmbl_tot, 0, 300, 5);
-               fmbl_tot->SetParameters( m, 1.0, 1.0, 1.0, 1.0 );
-               double integralsig = fmbl_tot->Integral(0,300);
-               fmbl_tot->SetParameters( m, 0.0, 1.0, 1.0, 1.0 );
-               double integralbkg = fmbl_tot->Integral(0,300);
-
-               // signal integral
-               double pmbl [] = {m, 1.0, 1.0, integralsig, integralbkg};
-               double integral = 0;
-               for(double x=0; x < 300; x+=0.1){
-                  integral += 0.1*fptr->Fmbl_tot( &x, pmbl );
-               }
-               cout << " -----> sig integral = " << integral << endl;
-
-               // bkg integral
-               pmbl[1] = 0.0;
-               integral = 0;
-               for(double x=0; x < 300; x+=0.1){
-                  integral += 0.1*fptr->Fmbl_tot( &x, pmbl );
-               }
-               cout << " -----> bkg integral = " << integral << endl;
-
-               // s+b integral
-               pmbl[1] = 0.5;
-               integral = 0;
-               for(double x=0; x < 300; x+=0.1){
-                  integral += 0.1*fptr->Fmbl_tot( &x, pmbl );
-               }
-               cout << " -----> s+b integral = " << integral << endl;
-
-            }
-            return 0;
-            */
 
             typedef map<string, TH1D*> tmap;
             typedef map<string, tmap> hmap;
@@ -535,8 +472,7 @@ int main(int argc, char* argv[]){
             lbound_mbl = fitter.lbnd;
             rbound_mbl = fitter.rbnd;
 
-            // TODO
-            //tree->Fill();
+            tree->Fill();
 
             eventvec_fit.clear();
             eventvec_fit_bkgcontrol.clear();
@@ -550,15 +486,6 @@ int main(int argc, char* argv[]){
    }
 
    if( do_templates ){
-      
-      
-      
-      /*
-      Shapes * fptr2 = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
-            fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
-      fptr2->LearnGPparams( hists_train_ );
-      return 0;
-*/
 
       // do GP training
       cout << "Training GP... ";
@@ -572,33 +499,12 @@ int main(int argc, char* argv[]){
       Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
             fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
 
-      /*
-      for( double g=1.9E-7; g <= 3.0E-7; g+=1E-8 ){
-         fptr->gnorm1 = g;
-         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
-         cout << "gnorm = " << g << " ---> " << "M2LL (sig, bkg): "
-            << m2llsig << ", " << m2llbkg << endl;
-      }
-         fptr->gnorm1 = 2.8E-07;
-         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
-         */
-      
-      /*
-      for( double g=0.1; g <= 2; g+=0.1 ){
-         fptr->gnorm1 = 2.8E-07;
-         fptr->gnorm2 = g;
-         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
-         cout << "gnorm = " << g << " ---> " << "M2LL (sig, bkg): "
-            << m2llsig << ", " << m2llbkg << endl;
-      }
-      return 0;
-      */
-         fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
+      fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
       fitter.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
       fitter.aGPsig = fptr->aGPsig;
       fitter.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
       fitter.aGPbkg = fptr->aGPbkg;
-      // TODO
+
       fitter.Ainv_sig.ResizeTo( fptr->aGPsig.GetNoElements(), fptr->aGPsig.GetNoElements() );
       fitter.Ainv_sig = fptr->Ainv_sig;
       fitter.Ainv_bkg.ResizeTo( fptr->aGPbkg.GetNoElements(), fptr->aGPbkg.GetNoElements() );
@@ -610,6 +516,12 @@ int main(int argc, char* argv[]){
          tbkg_mbl_chi2[j] = fitter.tbkg_mbl_chi2[j];
       }
 
+   }
+
+   if( do_learnparams ){
+      Shapes * fptr2 = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
+            fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
+      fptr2->LearnGPparams( hists_train_ );
    }
 
    if( do_fit or do_templates ){

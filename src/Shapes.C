@@ -98,7 +98,6 @@ double Shapes::Fmbl_gp(double x, double mt, string sb){
    return fgp;
 }
 
-// TODO
 double Shapes::Fmbl_gp_var(double x, double mt, string sb){
 
    double masspnts [] = {161.5, 163.5, 166.5, 169.5, 172.5, 175.5, 178.5, 181.5};
@@ -124,10 +123,6 @@ double Shapes::Fmbl_gp_var(double x, double mt, string sb){
    }
    c2 = kT*k;
 
-   //k.Print();
-   //kT.Print();
-
-   //cout << "### " << c1 << " " << c2 << endl;
    return (c1-c2);
 }
 
@@ -166,10 +161,6 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
       hgp_bkg[i]->Add( hists_["mbl"]["other"] );
       hgp_bkg[i]->Scale( 1.0/hgp_bkg[i]->Integral("width") );
 
-      // TODO
-      
-      //hgp_sig[i]->Scale( 30000.0 );
-      //hgp_bkg[i]->Scale( 30000.0 );
       for(int n=0; n < hgp_sig[i]->GetNbinsX(); n++){
          if( hgp_sig[i]->GetBinError(n) < 5E-06 ) hgp_sig[i]->SetBinError(n, 5E-06);
          if( hgp_bkg[i]->GetBinError(n) < 5E-06 ) hgp_bkg[i]->SetBinError(n, 5E-06);
@@ -177,17 +168,6 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
       
 
    }
-
-      // TODO
-   
-   /*
-   for(int i=0; i < hgp_sig[0]->GetNbinsX(); i++){
-      cout << i << ", " << hgp_sig[0]->GetBinCenter(i) << ": "
-         << hgp_sig[0]->GetBinContent(i) << " +- "
-         << hgp_sig[0]->GetBinError(i) << endl;
-   }
-   */
-   
 
    // compute covariance matrix
    TMatrixD K(ntrain*nmasses,ntrain*nmasses);
@@ -208,13 +188,10 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
       int imass = i / ntrain;
       double binerr_sig = hgp_sig[imass]->GetBinError( hgp_sig[imass]->FindBin(ptrain[im]) );
       double binerr_bkg = hgp_bkg[imass]->GetBinError( hgp_bkg[imass]->FindBin(ptrain[im]) );
-      // TODO
       binerr_sig *= sqrt(gnorm2);
       binerr_bkg *= sqrt(gnorm2);
-      //cout << binerr_sig << " " << binerr_bkg << endl;
       for(int j=0; j < ntrain*nmasses; j++){
          if( i==j ){
-            // TODO
             Nsig[i][j] = binerr_sig*binerr_sig;//pow( max(binerr_sig,0.001), 2 );
             Nbkg[i][j] = binerr_bkg*binerr_bkg;//pow( max(binerr_bkg,0.001), 2 );
          }else{
@@ -225,16 +202,6 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
    }
 
    // inverse of sum
-   // TODO
-   /*
-   Ainv_sig.ResizeTo( ntrain*nmasses, ntrain*nmasses );
-   Ainv_bkg.ResizeTo( ntrain*nmasses, ntrain*nmasses );
-   Ainv_sig = Asig;
-   Ainv_bkg = Abkg;
-   Ainv_sig.Invert();
-   Ainv_bkg.Invert();
-   */
-
    TMatrixD Asig = K + Nsig;
    TMatrixD Abkg = K + Nbkg;
    TDecompChol Cholsig(Asig);
@@ -252,7 +219,6 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
    Ainv_bkg = (TMatrixD)Asinv_bkg;
 
 
-   // TODO
    TMatrixD Ainv_sigtemp = Ainv_sig;
    TMatrixD Ainv_bkgtemp = Ainv_bkg;
 
@@ -287,7 +253,6 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
    for(int i=0; i < Cholsig.GetNrows(); i++){
       ldetsig += 2*log(AsigU[i][i]);
       ldetbkg += 2*log(AbkgU[i][i]);
-      //cout << " *** " << log(AsigU[i][i]) << endl;
    }
 
    double term1sig = -0.5*ysig*aGPsig;
@@ -325,17 +290,6 @@ void Shapes::LearnGPparams( map< string, map<string, TH1D*> > & hists_ ){
 
    // set training hist and minimize
    hists_train_ = &hists_;
-
-   // TODO
-   /*
-   for(int i=1; i < 15; i++){
-      double xtemp [] = {10.0*i,10.0*i,10.0*i,10.0*i};
-      const double *pxtemp = xtemp;
-      double m2ll = GPm2llX( pxtemp );
-      cout << "i = " << i << " ---> m2ll = " << m2ll << endl;
-   }
-   return;
-*/
 
    gMinuit->Minimize();
    return;
@@ -408,9 +362,7 @@ double Shapes::GPm2llX( const double *x ){
          for(int j=0; j < nmasses; j++){
 
             double mean = Fmbl_gp(ptrainX[i],masspnts[j],"sig");
-            // TODO
             double var = Fmbl_gp_var(ptrainX[i],masspnts[j],"sig");
-            //double var = pow(hgp_sig[j]->GetBinError( hgp_sig[j]->FindBin(ptrainX[i]) ),2);
             double yi = hgp_sig[j]->GetBinContent( hgp_sig[j]->FindBin(ptrainX[i]) );
 
             if( var <= 0 ){

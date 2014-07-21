@@ -324,6 +324,7 @@ void Fitter::ReweightMC( vector<Event>& eventvec, string name ){
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
+   // TODO
    //gMinuit->SetTolerance(0.001);
    gMinuit->SetTolerance(1.0);
    gMinuit->SetPrintLevel(3);
@@ -332,20 +333,9 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    gMinuit->SetFunction( *fFunc );
    gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
    gMinuit->SetLimitedVariable(1, "norm", 0.5, 0.1, 0, 1.0);
-   //gMinuit->SetFixedVariable(0, "topMass", 172.5);
-   //gMinuit->SetFixedVariable(1, "norm", 0.70712);
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
-
-   // TODO
-   /*
-   double xtemp [] = {173.11,0.70712};
-   for(double x=-2.0; x < 2.0; x += 0.1){
-      xtemp[0] = 173.11+x;
-      cout << "mt = " << 173.11+x << ": " << Min2LL(xtemp) << endl;
-   }
-   */
 
    cout << "\nFitting " << eventvec_fit->size() << " events." << endl;
    gMinuit->Minimize();
@@ -390,7 +380,6 @@ double Fitter::Min2LL(const double *x){
          if( ev->mbls[i] > rangembl ) continue;
          double val = shape.Fmbl_tot( &(ev->mbls[i]), pmbl );
          if( ev->mbls[i] > lbnd and ev->mbls[i] < rbnd ) val = 1;
-         //if( val < 0.0001 ) cout << ev->mbls[i] << ": " << val << endl;
          m2ll -= 2.0*ev->weight*log( val );
       }
 

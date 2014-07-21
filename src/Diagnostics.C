@@ -665,7 +665,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
             fptr->aGPsig = aGPsig;
             fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
             fptr->aGPbkg = aGPbkg;
-            // TODO
+
             fptr->Ainv_sig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
             fptr->Ainv_sig = Ainv_sig;
             fptr->Ainv_bkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
@@ -682,16 +682,13 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
             ftemplate->SetLineWidth(2);
 
-            // TODO
             // TGraph with GP covariance
             TGraphErrors *gpvar = new TGraphErrors();
             for(int x=0; x < 300; x++){
                gpvar->SetPoint(x, x, ftemplate->Eval(x));
                gpvar->SetPointError(x, 0, sqrt(fptr->Fmbl_gp_var(x,masspnts[j],sb[k])));
-               //cout << x << " err = " << fptr->Fmbl_gp_var(x,masspnts[j],sb[k]) << endl;
             }
             gpvar->SetLineColor(2);
-            //gpvar->SetFillStyle(3004);
             gpvar->SetFillColor(5);
             gpvar->Draw("E3");
 
@@ -736,7 +733,6 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                   double feval = ftemplate->Eval(hchi2->GetBinCenter(n));
                   if( binerr == 0 ) binerr = 1;
                   chi2 += pow( (bincontent-feval)/binerr, 2);
-                  //if( j==1 and k==0 ) cout << hchi2->GetBinCenter(n) << ": " << chi2 << endl;
                }
 
                if( k==0 ){
@@ -759,6 +755,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    // plot template as a function of top mass
    
    // TODO
+   // need to figure out variance band for this plot
    /*
    TDirectory *dir = fileout->mkdir( "mtshape" );
    dir->cd();
@@ -782,7 +779,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
          fptr->aGPsig = aGPsig;
          fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
          fptr->aGPbkg = aGPbkg;
-         // TODO
+
          fptr->Ainv_sig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
          fptr->Ainv_sig = Ainv_sig;
          fptr->Ainv_bkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );

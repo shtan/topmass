@@ -314,15 +314,14 @@ void Shapes::LearnGPparams( map< string, map<string, TH1D*> > & hists_ ){
    fFunc = new ROOT::Math::Functor ( this, &Shapes::GPm2llX, 4 );
    gMinuit->SetTolerance(1000.0);
    gMinuit->SetFunction( *fFunc );
-   // TODO
    //gMinuit->SetFixedVariable(0, "gpnorm1", 1.0);
    gMinuit->SetLowerLimitedVariable(0, "gpnorm1", 5.0, 0.1, 0.0);
-   //gMinuit->SetLowerLimitedVariable(1, "gpnorm2", 10.0, 0.1, 0.0);
-   //gMinuit->SetLowerLimitedVariable(2, "lmbl", 15, 1, 0.0);
-   //gMinuit->SetLowerLimitedVariable(3, "lmass", 30, 1, 0.0);
-   gMinuit->SetFixedVariable(1, "gpnorm2", 11.8);
-   gMinuit->SetFixedVariable(2, "lmbl", 13.4);
-   gMinuit->SetFixedVariable(3, "lmass", 17.8);
+   gMinuit->SetLowerLimitedVariable(1, "gpnorm2", 10.0, 0.1, 0.0);
+   gMinuit->SetLowerLimitedVariable(2, "lmbl", 15, 1, 0.0);
+   gMinuit->SetLowerLimitedVariable(3, "lmass", 30, 1, 0.0);
+   //gMinuit->SetFixedVariable(1, "gpnorm2", 11.8);
+   //gMinuit->SetFixedVariable(2, "lmbl", 13.4);
+   //gMinuit->SetFixedVariable(3, "lmass", 17.8);
 
    // set training hist and minimize
    hists_train_ = &hists_;

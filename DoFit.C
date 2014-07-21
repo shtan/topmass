@@ -432,22 +432,20 @@ int main(int argc, char* argv[]){
 
             // TODO
             
-            fitter.gplength_mbl = 13;
+            //fitter.gplength_mbl = 13;
             //fitter.gplength_mt = 18;
-            fitter.gplength_mt = 32;
+            //fitter.gplength_mt = 32;
             //fitter.gnorm1 = 1.5;
             //fitter.gnorm2 = 12;
             //fitter.gnorm1 = 30;
             //fitter.gnorm2 = 1;
-            fitter.gnorm1 = 1.0/3E4;
-            fitter.gnorm2 = 3E4;
+            //fitter.gnorm1 = 1.0/3E4;
+            //fitter.gnorm2 = 3E4;
             
-            /*
-            fitter.gplength_mbl = 3.98;
-            fitter.gplength_mt = 12.49;
-            fitter.gnorm1 = 15.8;
-            fitter.gnorm2 = 11.8;
-            */
+            fitter.gplength_mbl = 13;
+            fitter.gplength_mt = 18;
+            fitter.gnorm1 = 1.5;
+            fitter.gnorm2 = 12;
 
 
             // do GP training
@@ -554,6 +552,7 @@ int main(int argc, char* argv[]){
    if( do_templates ){
       
       
+      
       /*
       Shapes * fptr2 = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
             fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
@@ -564,16 +563,15 @@ int main(int argc, char* argv[]){
       // do GP training
       cout << "Training GP... ";
       double m2llsig, m2llbkg;
-      // TODO
+
       fitter.gplength_mbl = 13;
-      //fitter.gplength_mt = 18;
-      fitter.gplength_mt = 32;
-      //fitter.gnorm1 = 1.5;
-      //fitter.gnorm2 = 12;
-      fitter.gnorm1 = 1;
-      fitter.gnorm2 = 1;
+      fitter.gplength_mt = 18;
+      fitter.gnorm1 = 1.5;
+      fitter.gnorm2 = 12;
+
       Shapes * fptr = new Shapes( fitter.gplength_mbl, fitter.gplength_mt,
             fitter.lbnd, fitter.rbnd, fitter.gnorm1, fitter.gnorm2 );
+
       /*
       for( double g=1.9E-7; g <= 3.0E-7; g+=1E-8 ){
          fptr->gnorm1 = g;

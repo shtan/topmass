@@ -273,8 +273,8 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       }
 
       // push back event
-      //if ( (jet1->M() < 40 and jet2->M() < 40) )
-      eventvec.push_back( evtemp );
+      if ( (jet1->M() < 40 and jet2->M() < 40) )
+         eventvec.push_back( evtemp );
 
    }
 
@@ -331,7 +331,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 2 );
    gMinuit->SetFunction( *fFunc );
    gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
-   gMinuit->SetLimitedVariable(1, "norm", 0.7, 0.1, 0, 1.0);
+   gMinuit->SetLimitedVariable(1, "norm", 0.5, 0.1, 0, 1.0);
    //gMinuit->SetFixedVariable(0, "topMass", 172.5);
    //gMinuit->SetFixedVariable(1, "norm", 0.70712);
 

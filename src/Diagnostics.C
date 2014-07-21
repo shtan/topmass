@@ -188,8 +188,10 @@ void Fitter::FillHists( map< string, map<string, TH1D*> >& hists_,
       if( ev->mt2_210 > 1 ) hists_["mt2_210"][type]->Fill( ev->mt2_210, ev->weight );
 
       for( unsigned int m=0; m < ev->mbls.size(); m++ ){
-         hists_["mbl"][type]->Fill( ev->mbls[m], ev->weight );
-         hists_["mbl_fit"][type]->Fill( ev->mbls[m], ev->weight );
+         if( !(fit_events and ev->mbls[m] > lbnd and ev->mbls[m] < rbnd) ){
+            hists_["mbl"][type]->Fill( ev->mbls[m], ev->weight );
+            hists_["mbl_fit"][type]->Fill( ev->mbls[m], ev->weight );
+         }
          //hists2d_["mblV220"][type]->Fill( ev->mt2_220, ev->mbls[m], ev->weight );
          if( ev->mbls[m] == ev->mt2_220 ) matchmbl = true;
       }
@@ -667,7 +669,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                hmc->SetMarkerStyle(20);
                hmc->DrawCopy();
 
-               Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd );
+               Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
                fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
                fptr->aGPsig = aGPsigs[i];
                fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
@@ -749,7 +751,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
                   // graph with template value at mbl = x
                   TGraph *gtemplate = new TGraph();
-                  Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd );
+                  Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
                   fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
                   fptr->aGPsig = aGPsigs[i];
                   fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
@@ -813,6 +815,78 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
       }
    }
 
+   // TODO
+   // need to figure out variance band for this plot
+   /*
+   TDirectory *dir = fileout->mkdir( "mtshape" );
+   dir->cd();
+   for(unsigned int k=0; k < sizeof(sb)/sizeof(sb[0]); k++){ // sig,bkg
+      for(double x=0; x <= rangembl; x+=10){ // bin of mbl
+         cout << "mbl: " << x << endl;
+
+         stringstream ssmbl;
+         ssmbl << x;
+         string smbl = ssmbl.str();
+
+         TCanvas *canvas = new TCanvas( ("c"+sb[k]+"_mbl"+smbl).c_str(),
+               ("c"+sb[k]+"_mbl"+smbl).c_str(), 800, 800);
+         canvas->SetFillColor(0);
+         canvas->cd();
+
+         // graph with template value at mbl = x
+         TGraphErrors *gtemplate = new TGraphErrors();
+         Shapes * fptr = new Shapes( gplength_mbl, gplength_mt, lbnd, rbnd, gnorm1, gnorm2 );
+         fptr->aGPsig.ResizeTo( aGPsig.GetNoElements() );
+         fptr->aGPsig = aGPsig;
+         fptr->aGPbkg.ResizeTo( aGPbkg.GetNoElements() );
+         fptr->aGPbkg = aGPbkg;
+
+         fptr->Ainv_sig.ResizeTo( aGPsig.GetNoElements(), aGPsig.GetNoElements() );
+         fptr->Ainv_sig = Ainv_sig;
+         fptr->Ainv_bkg.ResizeTo( aGPbkg.GetNoElements(), aGPbkg.GetNoElements() );
+         fptr->Ainv_bkg = Ainv_bkg;
+
+         TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Fmbl_tot, 0, rangembl, 5);
+         int count=0;
+         for(double m=160.0; m <= 183.0; m+=0.5){ // value of mt
+            // normalization inside likelihood function (temp)
+            ftemplate->SetParameters( m, 1-k, 1.0, 1.0, 1.0 );
+            double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,rangembl) : 1.0;
+            double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,rangembl) : 1.0;
+            ftemplate->SetParameters( m, 1-k, 1.0, integralsig, integralbkg );
+
+            gtemplate->SetPoint(count, m, ftemplate->Eval(x));
+            gtemplate->SetPointError(count, 0, sqrt(fptr->Fmbl_gp_var(x,m,sb[k])));
+            count++;
+         }
+         gtemplate->SetTitle( TString("M_{bl} "+sb[k]+" shape @ mbl = "+smbl) );
+         gtemplate->SetLineColor(2);
+         gtemplate->SetLineWidth(2);
+         gtemplate->SetFillStyle(3004);
+         gtemplate->SetFillColor(4);
+
+         // now do the same at mc masspoints
+         TGraphErrors *gmc = new TGraphErrors();
+         count=0;
+         for(int j=0; j < 8; j++){
+            stringstream ssmass;
+            ssmass << floor(masspnts[j]);
+            string smass = ssmass.str();
+
+            TH1D *hmc;
+            if( sb[k] == "sig" ){
+               hmc = (TH1D*)hists_["mbl"]["ttbar"+smass+"_signal"]->Clone("hmc");
+            }else{
+               hmc = (TH1D*)hists_["mbl"]["ttbar"+smass+"_mistag"]->Clone("hmc");
+               hmc->Add( hists_["mbl"]["ttbar"+smass+"_taus"] );
+               hmc->Add( hists_["mbl"]["ttbar"+smass+"_hadronic"] );
+               hmc->Add( hists_["mbl"]["other"] );
+            }
+         }
+      }
+   }
+   */
+
 
    for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){ // distributions
       if (i != 1){ //don't do this for mbl_fit
@@ -845,7 +919,7 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
             // mbl likelihood
 
-            Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd );
+            Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
             fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
             fptr->aGPsig = aGPsigs[i];
             fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );

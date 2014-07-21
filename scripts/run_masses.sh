@@ -12,6 +12,8 @@ iter=$(($1/100))
 #echo ${mass[$iter]} $lbound $rbound
 
 cd /uscms/home/nmirman/topmass/
-#./DoFit --fit --masspnt ${mass[$iter]} --lmbl 13 --lmt 32
-./DoFit --fit --masspnt ${mass[$iter]} --lmbl 13 --lmt 32 --lbnd 0 --rbnd 30
+./DoFit --run_number $1 --bootstrap --fit --masspnt ${mass[$iter]}
+#./DoFit --run_number $1 --bootstrap --fit --masspnt ${mass[$iter]} --gnorm 30000
+#./DoFit --run_number $1 --bootstrap --fit --masspnt ${mass[$iter]} --lbnd 200 --rbnd 300
+#./DoFit --fit --masspnt ${mass[$iter]} --lbnd 0 --rbnd 30
 #./DoFit --fit --masspnt ${mass[$1]} --lmbl 13 --lmt 32

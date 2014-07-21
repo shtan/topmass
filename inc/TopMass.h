@@ -85,9 +85,10 @@ class Fitter{
       Fitter();
       ~Fitter();
 
-      void ReadNtuple(string, string, double, string, vector<Event>&, int=0, int=0);
+      void ReadNtuple(string, string, double, string, vector<Event>&, int=0, int=0, double=-1);
       void LoadDatasets(map<string, Dataset>&);
       void GetVariables(vector<Event>&);
+      void ReweightMC(vector<Event>&, string);
 
       void RunMinimizer(vector<Event>&);
       void PlotResults(map< string, map<string, TH1D*> >&);
@@ -101,6 +102,8 @@ class Fitter{
       void PrintHists( map< string, map<string, TH1D*> >& );
       void PlotTemplates( map< string, map<string, TH1D*> >& );
 
+      TMatrixD Ainv_sig;
+      TMatrixD Ainv_bkg;
       TVectorD aGPsig;
       TVectorD aGPbkg;
       TH1D* hmbl_bkg;
@@ -117,6 +120,10 @@ class Fitter{
       double gplength_mt;
       double gplength_mt_mbl;
       double gplength_mt_220;
+      double gnorm1, gnorm2;
+
+      double tsig_mbl_chi2 [8];
+      double tbkg_mbl_chi2 [8];
       
    private:
 

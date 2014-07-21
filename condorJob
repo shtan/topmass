@@ -3,7 +3,7 @@ Executable = scripts/run_masses.sh
 Requirements = Memory >= 199 &&OpSys == "LINUX"&& (Arch != "DUMMY" )&& Disk > 1000000 && FileSystemDomain != "DUMMY"
 Should_Transfer_Files = YES
 WhenToTransferOutput = ON_EXIT
-transfer_output_remaps = "plotsFitResults.root=condorout/plotsFitResults_$(Cluster)_$(Process).root; fitresults.root=condorout/fitresults_$(Cluster)_$(Process).root"
+transfer_output_remaps = "plotsFitResults.root=condorout2/plotsFitResults_$(Cluster)_$(Process).root; fitresults.root=condorout2/fitresults_$(Cluster)_$(Process).root"
 Output = condorlogs/condor_$(Cluster)_$(Process).stdout
 Error = condorlogs/condor_$(Cluster)_$(Process).stderr
 Log = condorlogs/condor_$(Cluster)_$(Process).log

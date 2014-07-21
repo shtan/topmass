@@ -57,8 +57,10 @@ Fitter::Fitter(){
    compute_profile = false;
 
    // gaussian process length scales
-   gplength_mbl = 25;
-   gplength_mt = 3;
+   gplength_mbl = 13;
+   gplength_mt = 32;
+   gnorm1 = 1.0;
+   gnorm2 = 1.0;
 
 }
 
@@ -132,7 +134,7 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 }
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
-      string selection, vector<Event>& eventvec, int opt, int randseed ){
+      string selection, vector<Event>& eventvec, int opt, int randseed, double fracevts ){
    
    // declare variables
    TLorentzVector *jet1 = new TLorentzVector();
@@ -203,6 +205,12 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
          eventlist.push_back( start+rand->Integer(end-start) );
       }
    }
+
+   // run on fraction of total events
+   if( fracevts != -1 ){
+      eventlist.erase( eventlist.end()-floor(numevents*(1-fracevts)), eventlist.end() );
+   }
+
    sort( eventlist.begin(), eventlist.end() );
 
    // fill event vector
@@ -266,7 +274,8 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       }
 
       // push back event
-      eventvec.push_back( evtemp );
+      if ( (jet1->M() < 40 and jet2->M() < 40) )
+         eventvec.push_back( evtemp );
 
    }
 
@@ -291,10 +300,32 @@ void Fitter::GetVariables( vector<Event>& eventvec ){
    return;
 }
 
+void Fitter::ReweightMC( vector<Event>& eventvec, string name ){
+   cout << "Reweighting MC events." << endl;
+
+   double weight_norm = 0;
+   double nevts_ttbar = 0;
+   for(vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
+      if( ev->type.find(name) != string::npos ){
+         weight_norm += ev->weight;
+         nevts_ttbar++;
+      }
+   }
+   cout << "---> nevts = " << nevts_ttbar << " weight_norm = " << weight_norm << endl;
+   // reweight
+   double wgt=0;
+   for(vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
+      ev->weight *= 1.0*nevts_ttbar/weight_norm;
+      wgt += ev->weight;
+   }
+   cout << "---> sum of weights = " << wgt << endl;
+
+}
 
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
+   // TODO
    //gMinuit->SetTolerance(0.001);
    gMinuit->SetTolerance(1.0);
    gMinuit->SetPrintLevel(3);
@@ -350,7 +381,7 @@ double Fitter::Min2LL(const double *x){
       if ( gplengths[i] != -1){ // only do this if we're fitting the variable in question
 
          // normalization inside likelihood function (temp)
-         Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd );
+         Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
          fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
          fptr->aGPsig = aGPsigs[i];
          fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
@@ -363,7 +394,7 @@ double Fitter::Min2LL(const double *x){
          delete fmbl_tot;
          delete fptr;
 
-         Shapes shape( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd );
+         Shapes shape( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
          shape.aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
          shape.aGPsig = aGPsigs[i];
          shape.aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
@@ -432,7 +463,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){
       if ( gplengths[i] != -1){
 
-         Shapes * fptr = new Shapes( fakenames[i], gplengths[i], gplength_mts[i], lbnd, rbnd );
+         Shapes * fptr = new Shapes( fakenames[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
          fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
          fptr->aGPsig = aGPsigs[i];
          fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
@@ -567,7 +598,6 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
                const double par [] = {mt, xmin1s[i], 1.0, integralsigk, integralbkgk};
                gLmt->SetPoint(k, mt, Min2LL(par) - minvalue);
             }
-
    
             // kvariable profile
             TGraph *gLkmbl = new TGraph();

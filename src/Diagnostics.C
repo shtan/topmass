@@ -177,6 +177,7 @@ void Fitter::FillHists( map< string, map<string, TH1D*> >& hists_,
       TLorentzVector bbl1 = jet1 + jet2 + lep1;
       TLorentzVector bbl2 = jet1 + jet2 + lep2;
 
+      // B MASS CUT
       if ( !(jet1.M() < 40 and jet2.M() < 40) ) continue;
 
       if (sin((jet1).DeltaPhi(up221))*sin((jet2).DeltaPhi(up221)) > 0){

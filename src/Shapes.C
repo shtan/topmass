@@ -17,20 +17,21 @@ using namespace std;
 // constructor and destructor
 //
 
-Shapes::Shapes( string var, double gplength_x, double gplength_mt,
-     double lbound_x, double rbound_x, double norm1, double norm2 ){
+Shapes::Shapes( string var, double gplength_x, double gplength_mt, double norm1, double norm2 ){
 
    name = var;
    // GP options
    lx = gplength_x;
    lmass = gplength_mt;
-   lbx = lbound_x;
-   rbx = rbound_x;
    gnorm1 = norm1;
    gnorm2 = norm2;
    int ntrain = 100;
    double rtrain = 300;
    for(int i=0; i < ntrain; i++) ptrain.push_back( (i+0.5)*rtrain/ntrain );
+
+   // right and left bounds -- set to zero unless needed
+   lbx = 0.0;
+   rbx = 0.0;
 
 }
 

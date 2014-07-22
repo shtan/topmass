@@ -78,6 +78,37 @@ struct Event {
 
 };
 
+struct Distribution {
+
+   string name;
+   string title;
+   bool activate;
+
+   double glx;
+   double glmt;
+   double gnorm1;
+   double gnorm2;
+
+   TMatrixD Ainv_sig;
+   TMatrixD Ainv_bkg;
+   
+   TVectorD aGPsig;
+   TVectorD aGPbkg;
+
+   double lbnd;
+   double rbnd;
+   double range;
+
+   Distribution( string n="", string t="", double lx=1.0, double lmt=1.0, double n1=1.0, double n2=1.0 )
+      : name(n), title(t), glx(lx), glmt(lmt), gnorm1(n1), gnorm2(n2) {
+         range = 300;
+         lbnd = 0;
+         rbnd = 0;
+         activate = false;
+   }
+
+};
+
 class Fitter{
 
    public:
@@ -102,25 +133,10 @@ class Fitter{
       void PrintHists( map< string, map<string, TH1D*> >& );
       void PlotTemplates( map< string, map<string, TH1D*> >& );
 
-      TMatrixD Ainv_sig;
-      TMatrixD Ainv_bkg;
-      TVectorD aGPsig;
-      TVectorD aGPbkg;
-      TH1D* hmbl_bkg;
-      TVectorD aGPsig220;
-      TVectorD aGPbkg220;
+      map<string, Distribution> dists;
 
-      double rangembl;
-      double range220;
-      double rbnd, lbnd;
       bool compute_profile;
       double fitchi2;
-      double gplength_mbl;
-      double gplength_220;
-      double gplength_mt;
-      double gplength_mt_mbl;
-      double gplength_mt_220;
-      double gnorm1, gnorm2;
 
       double tsig_mbl_chi2 [8];
       double tbkg_mbl_chi2 [8];

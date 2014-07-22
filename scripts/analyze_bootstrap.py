@@ -92,6 +92,15 @@ for i in range(8):
 
 cTop.Print('results/bootstrap_mt.pdf')
 
+# temp pull plot
+hpull = TH1D('hpull', 'Pull for M_{t}(MC) = 172.5;(M_{ti}-#mu)/#sigma_{MIGRAD};Pseudoexperiments', 25, -5, 5)
+for i in range( tree.GetEntries() ):
+   tree.GetEntry(i)
+   if tree.mcmass == 172.5:
+      hpull.Fill( (tree.mt - meanmt[4])/tree.mt_err )
+
+cpull = TCanvas('cpull','cpull',800,800)
+hpull.Draw()
 
 gresults = TGraphErrors()
 chi2=0

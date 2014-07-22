@@ -48,19 +48,11 @@ Fitter::Fitter(){
    gROOT->ProcessLineSync(".L scripts/tdrstyle.C");
    gROOT->ProcessLineSync("setTDRStyle()");
 
-   // fit range
-   rangembl = 300;
-   range220 = 300;
-   lbnd = 0;
-   rbnd = 0;
-
    compute_profile = false;
 
    // gaussian process length scales
-   gplength_mbl = 13;
-   gplength_mt = 32;
-   gnorm1 = 1.0;
-   gnorm2 = 1.0;
+   dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 13.0, 18.0, 1.5, 12.0 );
+   dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 13.0, 18.0, 1.5, 12.0 );
 
 }
 
@@ -336,20 +328,18 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
 
    // If we're fitting mbl, set mbl background as a limited variable, otherwise set it as a fixed variable
-   if (gplength_mbl != -1){
+   if (dists["mbl"].activate){
       gMinuit->SetLimitedVariable(1, "norm", 0.7, 0.1, 0, 1.0);
    } else {
       gMinuit->SetFixedVariable(1, "norm", 0.70712);
    }
 
    // If we're fitting 220, set 220 background as a limited variable, otherwise set it as a fixed variable
-   if (gplength_220 != -1){
+   if (dists["mt2_220_nomatchmbl"].activate){
       gMinuit->SetLimitedVariable(2, "norm220", 0.7, 0.1, 0, 1.0);
    } else {
       gMinuit->SetFixedVariable(2, "norm220", 0.70712);
    }
-   //gMinuit->SetFixedVariable(0, "topMass", 172.5);
-   //gMinuit->SetFixedVariable(1, "norm", 0.70712);
 
    // set event vector and minimize
    eventvec_fit = &eventvec;
@@ -367,57 +357,57 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
 double Fitter::Min2LL(const double *x){
 
-   // any additional variables need to be added here
-   string names [] = {"mbl","mt2_220_nomatchmbl"};
-   double gplengths [] = {gplength_mbl, gplength_220};
-   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_220};
-   TVectorD aGPsigs [] = {aGPsig, aGPsig220};
-   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg220};
-   double ranges [] = {rangembl, range220};
-
    double m2ll = 0;
 
-   for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){ // distributions
-      if ( gplengths[i] != -1){ // only do this if we're fitting the variable in question
+   for( map<string, Distribution>::iterator it = dists.begin(); it != dists.end(); it++ ){
+
+      string name = it->first;
+      Distribution dist = it->second;
+      int iparam = -1;
+      if( name.compare("mbl") == 0 ) iparam = 1;
+      if( name.compare("mt2_220_nomatchmbl") == 0 ) iparam = 2;
+
+      if( dist.activate ){// only do this if we're fitting the variable in question
 
          // normalization inside likelihood function (temp)
-         Shapes * fptr = new Shapes( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
-         fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
-         fptr->aGPsig = aGPsigs[i];
-         fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
-         fptr->aGPbkg = aGPbkgs[i];
-         TF1 *fmbl_tot = new TF1( ("f"+names[i]+"_tot").c_str(), fptr, &Shapes::Ftot, 0, rangembl, 5);
-         fmbl_tot->SetParameters( x[0], 1.0, 1.0, 1.0, 1.0 );
-         double integralsig = fmbl_tot->Integral(0,ranges[i]);
-         fmbl_tot->SetParameters( x[0], 0.0, 1.0, 1.0, 1.0 );
-         double integralbkg = fmbl_tot->Integral(0,ranges[i]);
-         delete fmbl_tot;
+         Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
+         fptr->aGPsig.ResizeTo( dist.aGPsig.GetNoElements() );
+         fptr->aGPsig = dist.aGPsig;
+         fptr->aGPbkg.ResizeTo( dist.aGPbkg.GetNoElements() );
+         fptr->aGPbkg = dist.aGPbkg;
+
+         TF1 *fshape_tot = new TF1( ("f"+name+"_tot").c_str(), fptr, &Shapes::Ftot, 0, dist.range, 5);
+         fshape_tot->SetParameters( x[0], 1.0, 1.0, 1.0, 1.0 );
+         double integralsig = fshape_tot->Integral(0,dist.range);
+         fshape_tot->SetParameters( x[0], 0.0, 1.0, 1.0, 1.0 );
+         double integralbkg = fshape_tot->Integral(0,dist.range);
+         delete fshape_tot;
          delete fptr;
 
-         Shapes shape( names[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
-         shape.aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
-         shape.aGPsig = aGPsigs[i];
-         shape.aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
-         shape.aGPbkg = aGPbkgs[i];
+         Shapes shape( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
+         shape.aGPsig.ResizeTo( dist.aGPsig.GetNoElements() );
+         shape.aGPsig = dist.aGPsig;
+         shape.aGPbkg.ResizeTo( dist.aGPbkg.GetNoElements() );
+         shape.aGPbkg = dist.aGPbkg;
 
-         double pmbl [] = {x[0], x[i+1], 1.0, integralsig, integralbkg};
+         double pfit [] = {x[0], x[iparam], 1.0, integralsig, integralbkg};
 
          // evaluate likelihood
          for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++ ){
             if( !(ev->fit_event) ) continue;
 
-            if (i == 0){ // for mbl
+            if ( name.compare("mbl") == 0 ){ // for mbl
                for( unsigned int j=0; j < ev->mbls.size(); j++ ){
-                  if( ev->mbls[j] > ranges[i] ) continue;
-                  if( ev->mbls[j] > lbnd and ev->mbls[j] < rbnd ) continue;
-                  double val = shape.Ftot( &(ev->mbls[j]), pmbl );
+                  if( ev->mbls[j] > dist.range ) continue;
+                  //if( ev->mbls[j] > lbnd and ev->mbls[j] < rbnd ) continue;
+                  double val = shape.Ftot( &(ev->mbls[j]), pfit );
                   m2ll -= 2.0*ev->weight*log( val );
                }
             }
-            else if (i == 1){ // for 220
-               if( ev->mt2_220 > ranges[i] ) continue;
-               if( ev->mt2_220 > lbnd and ev->mt2_220 < rbnd ) continue;
-               double val = shape.Ftot( &(ev->mt2_220), pmbl );
+            else if ( name.compare("mt2_220_nomatchmbl") == 0 ){ // for 220
+               if( ev->mt2_220 > dist.range ) continue;
+               //if( ev->mt2_220 > lbnd and ev->mt2_220 < rbnd ) continue;
+               double val = shape.Ftot( &(ev->mt2_220), pfit );
                m2ll -= 2.0*ev->weight*log( val );
             }
 
@@ -447,30 +437,31 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    TFile *fileout = new TFile( (pathstr+"/plotsFitResults.root").c_str() , "RECREATE" );
    fileout->cd();
 
-   // any additional variables need to be added here
-   string names [] = {"mbl","mbl_fit","mt2_220_nomatchmbl"};
-   string fakenames [] = {"mbl","mbl","mt2_220_nomatchmbl"}; // just a quirk to suit mbl_fit
-   double gplengths [] = {gplength_mbl, gplength_mbl, gplength_220};
-   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_mbl, gplength_mt_220};
-   TVectorD aGPsigs [] = {aGPsig, aGPsig, aGPsig220};
-   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg, aGPbkg220};
-   double ranges [] = {rangembl, rangembl, range220};
    double xmin1s [] = {xmin[1], xmin[1], xmin[2]}; // the background for each variable, as it is positioned in minuit's parameter vector
    double xerr1s [] = {xerr[1], xerr[1], xerr[2]}; // the background for each variable, as it is positioned in minuit's parameter vector
 
+   // loop over distributions
    double chi2 = 0;
+   for( map<string, Distribution>::iterator it = dists.begin(); it != dists.end(); it++ ){
 
-   for(unsigned int i=0; i < sizeof(names)/sizeof(names[0]); i++){
-      if ( gplengths[i] != -1){
+      string name = it->first;
+      Distribution dist = it->second;
+      int iparam = -1;
+      if( name.compare("mbl") == 0 ) iparam = 1;
+      if( name.compare("mt2_220_nomatchmbl") == 0 ) iparam = 2;
 
-         Shapes * fptr = new Shapes( fakenames[i], gplengths[i], gplength_mts[i], lbnd, rbnd, gnorm1, gnorm2 );
-         fptr->aGPsig.ResizeTo( aGPsigs[i].GetNoElements() );
-         fptr->aGPsig = aGPsigs[i];
-         fptr->aGPbkg.ResizeTo( aGPbkgs[i].GetNoElements() );
-         fptr->aGPbkg = aGPbkgs[i];
-         TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, ranges[i], 5);
+      if( dist.activate ){// only do this if we're fitting the variable in question
 
-         TCanvas *canvas = new TCanvas( ("c_"+names[i]).c_str(), ("c_"+names[i]).c_str(), 800, 800);
+         // normalization inside likelihood function (temp)
+         Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
+         fptr->aGPsig.ResizeTo( dist.aGPsig.GetNoElements() );
+         fptr->aGPsig = dist.aGPsig;
+         fptr->aGPbkg.ResizeTo( dist.aGPbkg.GetNoElements() );
+         fptr->aGPbkg = dist.aGPbkg;
+
+         TF1 *ftemplate = new TF1( "ftemplate", fptr, &Shapes::Ftot, 0, dist.range, 5);
+
+         TCanvas *canvas = new TCanvas( ("c_"+name).c_str(), ("c_"+name).c_str(), 800, 800);
          canvas->SetFillColor(0);
          canvas->cd();
 
@@ -497,12 +488,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
          // pad 1
          pad1->cd();
 
-         TH1D *hdata = (TH1D*)hists_[names[i]]["fitevts"]->Clone("fitevts");
-         if( names[i].compare("mbl_fit") == 0 ){
-            hdata->Rebin(4);
-            hdata->GetYaxis()->SetTitle("Events/10 GeV");
-         }
-
+         TH1D *hdata = (TH1D*)hists_[name]["fitevts"]->Clone("fitevts");
          hdata->GetXaxis()->SetTitleSize(0.00);
          hdata->GetYaxis()->SetLabelSize(0.07);
          hdata->GetYaxis()->SetTitleSize(0.08);
@@ -517,30 +503,27 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
          // normalization inside likelihood function (temp)
          ftemplate->SetParameters( xmin[0], 1.0, 1.0, 1.0, 1.0 );
-         double integralsig = ftemplate->Integral(0,ranges[i]);
+         double integralsig = ftemplate->Integral(0,dist.range);
          ftemplate->SetParameters( xmin[0], 0.0, 1.0, 1.0, 1.0 );
-         double integralbkg = ftemplate->Integral(0,ranges[i]);
-         ftemplate->SetParameters( xmin[0], xmin1s[i],
+         double integralbkg = ftemplate->Integral(0,dist.range);
+         ftemplate->SetParameters( xmin[0], xmin1s[iparam],
                hdata->Integral("width"), integralsig, integralbkg );
 
          ftemplate->SetLineWidth(2);
          ftemplate->DrawCopy("same");
          hdata->DrawCopy("same"); // redraw points
 
-         if( i!=1 ){ // mbl_fit doesn't contribute to chi2
-            for(int n=0; n <= hdata->GetNbinsX(); n++){
-               double bincontent = hdata->GetBinContent(n);
-               double binerr = hdata->GetBinError(n);
-               double feval = ftemplate->Eval(hdata->GetBinCenter(n));
-               if( binerr == 0 ) binerr = 1;
-               chi2 += pow( (bincontent-feval)/binerr, 2);
-            }
+         for(int n=0; n <= hdata->GetNbinsX(); n++){
+            double bincontent = hdata->GetBinContent(n);
+            double binerr = hdata->GetBinError(n);
+            double feval = ftemplate->Eval(hdata->GetBinCenter(n));
+            if( binerr == 0 ) binerr = 1;
+            chi2 += pow( (bincontent-feval)/binerr, 2);
          }
 
          // pad 2
          pad2->cd();
-         TH1D *hratio = (TH1D*)hists_[names[i]]["fitevts"]->Clone("hratio");
-         if( names[i].compare("mbl_fit") == 0 ) hratio->Rebin(4);
+         TH1D *hratio = (TH1D*)hists_[name]["fitevts"]->Clone("hratio");
          hratio->Divide( ftemplate );
 
          hratio->SetTitle("");
@@ -570,7 +553,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
          delete func;
 
          // This part (the profile computation may not yet be working correctly, or may not make sense.
-         if ( compute_profile and ( i != 1) ){
+         if ( compute_profile ){
             //
             // plot likelihood near minimum
             //
@@ -578,8 +561,8 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
             unsigned int npnts_kmbl = 10;
             double mt_lrange = xmin[0]-3*xerr[0];
             double mt_rrange = xmin[0]+3*xerr[0];
-            double kmbl_lrange = xmin1s[i]-3*xerr1s[i];
-            double kmbl_rrange = xmin1s[i]+3*xerr1s[i];
+            double kmbl_lrange = xmin1s[iparam]-3*xerr1s[iparam];
+            double kmbl_rrange = xmin1s[iparam]+3*xerr1s[iparam];
    
             // mt profile
             TGraph *gLmt = new TGraph();
@@ -590,12 +573,12 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
                // normalization inside likelihood function (temp)
                ftemplate->SetParameters( mt, 1.0, 1.0, 1.0, 1.0 );
-               double integralsigk = ftemplate->Integral(0,ranges[i]);
+               double integralsigk = ftemplate->Integral(0,dist.range);
                ftemplate->SetParameters( mt, 0.0, 1.0, 1.0, 1.0 );
-               double integralbkgk = ftemplate->Integral(0,ranges[i]);
-               ftemplate->SetParameters( mt, xmin1s[i], 1.0, integralsigk, integralbkgk );
+               double integralbkgk = ftemplate->Integral(0,dist.range);
+               ftemplate->SetParameters( mt, xmin1s[iparam], 1.0, integralsigk, integralbkgk );
 
-               const double par [] = {mt, xmin1s[i], 1.0, integralsigk, integralbkgk};
+               const double par [] = {mt, xmin1s[iparam], 1.0, integralsigk, integralbkgk};
                gLmt->SetPoint(k, mt, Min2LL(par) - minvalue);
             }
    
@@ -608,9 +591,9 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
 
                // normalization inside likelihood function (temp)
                ftemplate->SetParameters( xmin[0], 1.0, 1.0, 1.0, 1.0 );
-               double integralsigk = ftemplate->Integral(0,ranges[i]);
+               double integralsigk = ftemplate->Integral(0,dist.range);
                ftemplate->SetParameters( xmin[0], 0.0, 1.0, 1.0, 1.0 );
-               double integralbkgk = ftemplate->Integral(0,ranges[i]);
+               double integralbkgk = ftemplate->Integral(0,dist.range);
                ftemplate->SetParameters( xmin[0], kmbl, 1.0, integralsigk, integralbkgk );
       
                const double par [] = {xmin[0], kmbl, 1.0, integralsigk, integralbkgk};
@@ -634,19 +617,19 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
                }
             }
 
-            TCanvas *cLmt = new TCanvas( ("cLmt_"+names[i]).c_str(), ("cLmt_"+names[i]).c_str(), 800, 800);
+            TCanvas *cLmt = new TCanvas( ("cLmt_"+dist.name).c_str(), ("cLmt_"+dist.name).c_str(), 800, 800);
             cLmt->cd();
             gLmt->SetMarkerStyle(20);
             gLmt->Draw("ACP");
             cLmt->Write("cLmt");
 
-            TCanvas *cLkmbl = new TCanvas( ("cLkmbl_"+names[i]).c_str(), ("cLkmbl_"+names[i]).c_str(), 800, 800);
+            TCanvas *cLkmbl = new TCanvas( ("cLkmbl_"+dist.name).c_str(), ("cLkmbl_"+dist.name).c_str(), 800, 800);
             cLkmbl->cd();
             gLkmbl->SetMarkerStyle(20);
             gLkmbl->Draw("ACP");
             cLkmbl->Write("cLkmbl");
          
-            TCanvas *cLmbl = new TCanvas( ("cLmbl_"+names[i]).c_str(), ("cLmbl_"+names[i]).c_str(), 800, 800);
+            TCanvas *cLmbl = new TCanvas( ("cLmbl_"+dist.name).c_str(), ("cLmbl_"+dist.name).c_str(), 800, 800);
             cLmbl->cd();
             hLmbl->Draw("colz");
             cLmbl->Write("cLmbl");

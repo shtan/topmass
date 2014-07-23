@@ -83,6 +83,8 @@ int main(int argc, char* argv[]){
    int do_bootstrap = 0;
    int do_templates = 0;
    int do_learnparams = 0;
+   int do_mbl = 0;
+   int do_mt2 = 0;
    double fracevts = -1;
 
    struct option longopts[] = {
@@ -99,13 +101,13 @@ int main(int argc, char* argv[]){
       // If the lmbl flag is not entered, lengthscale_mbl has default value -1.
       // This instructs the code to not use mbl in the fit.
       // The same goes for each other kinematic variable.
-      { "mbl",          required_argument,   0,                'b' },
-      { "mt2",          required_argument,   0,                't' },
+      { "mbl",          no_argument,         &do_mbl,          'b' },
+      { "mt2",          no_argument,         &do_mt2,          't' },
       { "help",         no_argument,         NULL,             'h' },
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdexahponbt:m:c:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdexahponbtm:c:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -149,11 +151,11 @@ int main(int argc, char* argv[]){
             break;
 
          case 'b' :
-            fitter.dists["mbl"].activate = true;
+            do_mbl = true;
             break;
 
          case 't' :
-            fitter.dists["mt2_220_nomatchmbl"].activate = true;
+            do_mt2 = true;
             break;
 
          case 'h' :
@@ -178,6 +180,9 @@ int main(int argc, char* argv[]){
 
       }
    }
+
+   fitter.dists["mbl"].activate = do_mbl;
+   fitter.dists["mt2_220_nomatchmbl"].activate = do_mt2;
 
    // Check that at least one kinematic variable's lengthscale has been entered.
    // Any additional distributions need to be added here
@@ -431,20 +436,21 @@ int main(int argc, char* argv[]){
             for( map<string, Distribution>::iterator it = fitter.dists.begin(); it != fitter.dists.end(); it++ ){
 
                string name = it->first;
-               Distribution dist = it->second;
+               Distribution *dist = &(it->second);
 
                double m2llsig, m2llbkg;
 
-               if( dist.activate ){
-                  Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
+               if( dist->activate ){
+                  Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
                   fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
 
-                  dist.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
-                  dist.aGPsig = fptr->aGPsig;
-                  dist.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
-                  dist.aGPbkg = fptr->aGPbkg;
+                  dist->aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
+                  dist->aGPsig = fptr->aGPsig;
+                  dist->aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
+                  dist->aGPbkg = fptr->aGPbkg;
 
                   delete fptr;
+
                }
 
             }
@@ -500,23 +506,23 @@ int main(int argc, char* argv[]){
             for( map<string, Distribution>::iterator it = fitter.dists.begin(); it != fitter.dists.end(); it++ ){
 
                string name = it->first;
-               Distribution dist = it->second;
+               Distribution *dist = &(it->second);
 
                double m2llsig, m2llbkg;
 
-               if( dist.activate ){
-                  Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
+               if( dist->activate ){
+                  Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
                   fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
 
-                  dist.aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
-                  dist.aGPsig = fptr->aGPsig;
-                  dist.aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
-                  dist.aGPbkg = fptr->aGPbkg;
+                  dist->aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
+                  dist->aGPsig = fptr->aGPsig;
+                  dist->aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
+                  dist->aGPbkg = fptr->aGPbkg;
 
-                  dist.Ainv_sig.ResizeTo( fptr->aGPsig.GetNoElements(), fptr->aGPsig.GetNoElements() );
-                  dist.Ainv_sig = fptr->Ainv_sig;
-                  dist.Ainv_bkg.ResizeTo( fptr->aGPbkg.GetNoElements(), fptr->aGPbkg.GetNoElements() );
-                  dist.Ainv_bkg = fptr->Ainv_bkg;
+                  dist->Ainv_sig.ResizeTo( fptr->aGPsig.GetNoElements(), fptr->aGPsig.GetNoElements() );
+                  dist->Ainv_sig = fptr->Ainv_sig;
+                  dist->Ainv_bkg.ResizeTo( fptr->aGPbkg.GetNoElements(), fptr->aGPbkg.GetNoElements() );
+                  dist->Ainv_bkg = fptr->Ainv_bkg;
 
                   delete fptr;
                }
@@ -534,8 +540,8 @@ int main(int argc, char* argv[]){
 
    if( do_learnparams ){
       string name = "mbl";
-      Distribution dist = fitter.dists[name];
-      Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
+      Distribution *dist = &(fitter.dists[name]);
+      Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
       fptr->LearnGPparams( hists_train_ );
       delete fptr;
    }

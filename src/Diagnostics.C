@@ -594,9 +594,9 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    for( map<string, Distribution>::iterator it = dists.begin(); it != dists.end(); it++ ){
 
       string name = it->first;
-      Distribution dist = it->second;
+      Distribution *dist = &(it->second);
 
-      if( dist.activate ){// only do this if we're fitting the variable in question
+      if( dist->activate ){// only do this if we're fitting the variable in question
 
          TDirectory *dir = fileout->mkdir( name.c_str() );
          dir->cd();
@@ -666,18 +666,18 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                hmc->SetMarkerStyle(20);
                hmc->DrawCopy();
 
-               Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
-               fptr->aGPsig.ResizeTo( dist.aGPsig.GetNoElements() );
-               fptr->aGPsig = dist.aGPsig;
-               fptr->aGPbkg.ResizeTo( dist.aGPbkg.GetNoElements() );
-               fptr->aGPbkg = dist.aGPbkg;
-               TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, dist.range, 5);
+               Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
+               fptr->aGPsig.ResizeTo( dist->aGPsig.GetNoElements() );
+               fptr->aGPsig = dist->aGPsig;
+               fptr->aGPbkg.ResizeTo( dist->aGPbkg.GetNoElements() );
+               fptr->aGPbkg = dist->aGPbkg;
+               TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, dist->range, 5);
                ftemplate->SetNpx(500);
 
                // normalization inside likelihood function (temp)
                ftemplate->SetParameters( masspnts[j], 1-k, 1.0, 1.0, 1.0 );
-               double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,dist.range) : 1.0;
-               double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,dist.range) : 1.0;
+               double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,dist->range) : 1.0;
+               double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,dist->range) : 1.0;
                ftemplate->SetParameters( masspnts[j], 1-k,
                      1.0, integralsig, integralbkg );
 
@@ -728,15 +728,15 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    for( map<string, Distribution>::iterator it = dists.begin(); it != dists.end(); it++ ){
 
       string name = it->first;
-      Distribution dist = it->second;
+      Distribution *dist = &(it->second);
 
-      if( dist.activate ){// only do this if we're fitting the variable in question
+      if( dist->activate ){// only do this if we're fitting the variable in question
 
          TDirectory *dir = fileout->mkdir( ("mtshape_"+name).c_str() );
          dir->cd();
 
          for(unsigned int k=0; k < sizeof(sb)/sizeof(sb[0]); k++){ // sig,bkg
-            for(double x=0; x <= dist.range; x+=10){ // bin of mbl
+            for(double x=0; x <= dist->range; x+=10){ // bin of mbl
 
                stringstream ssx;
                ssx << x;
@@ -749,25 +749,25 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
                // graph with template value at mbl = x
                TGraph *gtemplate = new TGraph();
-               Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
-               fptr->aGPsig.ResizeTo( dist.aGPsig.GetNoElements() );
-               fptr->aGPsig = dist.aGPsig;
-               fptr->aGPbkg.ResizeTo( dist.aGPbkg.GetNoElements() );
-               fptr->aGPbkg = dist.aGPbkg;
-               TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, dist.range, 5);
+               Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
+               fptr->aGPsig.ResizeTo( dist->aGPsig.GetNoElements() );
+               fptr->aGPsig = dist->aGPsig;
+               fptr->aGPbkg.ResizeTo( dist->aGPbkg.GetNoElements() );
+               fptr->aGPbkg = dist->aGPbkg;
+               TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, dist->range, 5);
                int count=0;
                for(double m=160.0; m <= 183.0; m+=0.5){ // value of mt
                   // normalization inside likelihood function (temp)
                   ftemplate->SetParameters( m, 1-k, 1.0, 1.0, 1.0 );
-                  double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,dist.range) : 1.0;
-                  double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,dist.range) : 1.0;
+                  double integralsig = (sb[k] == "sig") ? ftemplate->Integral(0,dist->range) : 1.0;
+                  double integralbkg = (sb[k] == "bkg") ? ftemplate->Integral(0,dist->range) : 1.0;
                   ftemplate->SetParameters( m, 1-k, 1.0, integralsig, integralbkg );
 
                   gtemplate->SetPoint(count, m, ftemplate->Eval(x));
                   count++;
                }
                gtemplate->SetTitle( hists_[name]["ttbar172_signal"]->GetTitle()
-                     + TString(" "+sb[k]+" shape @ "+dist.title+" = "+sx) );
+                     + TString(" "+sb[k]+" shape @ "+dist->title+" = "+sx) );
                gtemplate->SetLineColor(2);
                gtemplate->SetLineWidth(2);
 
@@ -889,13 +889,13 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    for( map<string, Distribution>::iterator it = dists.begin(); it != dists.end(); it++ ){
 
       string name = it->first;
-      Distribution dist = it->second;
+      Distribution *dist = &(it->second);
 
-      if( dist.activate ){// only do this if we're fitting the variable in question
+      if( dist->activate ){// only do this if we're fitting the variable in question
          fileout->cd();
 
          TCanvas *cmbl_signal = new TCanvas( ("c_"+name+"_signal").c_str(),
-               (dist.title+" Template").c_str(), 800, 800);
+               (dist->title+" Template").c_str(), 800, 800);
          cmbl_signal->cd();
 
          // mass points
@@ -920,25 +920,25 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
 
          // mbl likelihood
 
-         Shapes * fptr = new Shapes( name, dist.glx, dist.glmt, dist.gnorm1, dist.gnorm2 );
-         fptr->aGPsig.ResizeTo( dist.aGPsig.GetNoElements() );
-         fptr->aGPsig = dist.aGPsig;
-         fptr->aGPbkg.ResizeTo( dist.aGPbkg.GetNoElements() );
-         fptr->aGPbkg = dist.aGPbkg;
-         TF1 *fmbl_tot = new TF1( ("f"+name+"_tot").c_str(), fptr, &Shapes::Ftot, 0, dist.range, 5);
+         Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
+         fptr->aGPsig.ResizeTo( dist->aGPsig.GetNoElements() );
+         fptr->aGPsig = dist->aGPsig;
+         fptr->aGPbkg.ResizeTo( dist->aGPbkg.GetNoElements() );
+         fptr->aGPbkg = dist->aGPbkg;
+         TF1 *fmbl_tot = new TF1( ("f"+name+"_tot").c_str(), fptr, &Shapes::Ftot, 0, dist->range, 5);
 
          fmbl_tot->SetParameters( 161.5, 1.0, 1.0, 1.0, 1.0 );
-         fmbl_tot->SetParameters( 161.5, 1.0, 1.0, fmbl_tot->Integral(0,dist.range), 1.0 );
+         fmbl_tot->SetParameters( 161.5, 1.0, 1.0, fmbl_tot->Integral(0,dist->range), 1.0 );
          fmbl_tot->SetLineColor(2);
          fmbl_tot->DrawCopy("same");
 
          fmbl_tot->SetParameters( 172.5, 1.0, 1.0, 1.0, 1.0 );
-         fmbl_tot->SetParameters( 172.5, 1.0, 1.0, fmbl_tot->Integral(0,dist.range), 1.0 );
+         fmbl_tot->SetParameters( 172.5, 1.0, 1.0, fmbl_tot->Integral(0,dist->range), 1.0 );
          fmbl_tot->SetLineColor(1);
          fmbl_tot->DrawCopy("same");
 
          fmbl_tot->SetParameters( 181.5, 1.0, 1.0, 1.0, 1.0 );
-         fmbl_tot->SetParameters( 181.5, 1.0, 1.0, fmbl_tot->Integral(0,dist.range), 1.0 );
+         fmbl_tot->SetParameters( 181.5, 1.0, 1.0, fmbl_tot->Integral(0,dist->range), 1.0 );
          fmbl_tot->SetLineColor(3);
          fmbl_tot->DrawCopy("same");
 

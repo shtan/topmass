@@ -58,9 +58,11 @@ int main(int argc, char* argv[]){
    double fitchi2=0;
    double tsig_mbl_chi2 [8] = {0};
    double tbkg_mbl_chi2 [8] = {0};
+   int PE = -1;
    
    TTree *tree = new TTree("FitResults", "FitResults");
    tree->Branch("runNumber", &run_number);
+   tree->Branch("PENumber", &PE);
    tree->Branch("fitStatus", &fitstatus);
    tree->Branch("mt", &mt);
    tree->Branch("mt_err", &mt_err);
@@ -87,7 +89,6 @@ int main(int argc, char* argv[]){
    int do_mt2 = 0;
    double fracevts = -1;
    int numPE = -1;
-   int PE = -1;
 
    struct option longopts[] = {
       { "run_number",   required_argument,   0,                'n' },

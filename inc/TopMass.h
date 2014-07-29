@@ -116,7 +116,7 @@ class Fitter{
       Fitter();
       ~Fitter();
 
-      void ReadNtuple(string, string, double, string, vector<Event>&, int=0, int=0, double=-1);
+      void ReadNtuple(string, string, double, string, vector<Event>&, int=0, int=0, double=-1, int=-1, int=-1);
       void LoadDatasets(map<string, Dataset>&);
       void GetVariables(vector<Event>&);
       void ReweightMC(vector<Event>&, string);

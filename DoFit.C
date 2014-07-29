@@ -86,6 +86,8 @@ int main(int argc, char* argv[]){
    int do_mbl = 0;
    int do_mt2 = 0;
    double fracevts = -1;
+   int numPE = -1;
+   int PE = -1;
 
    struct option longopts[] = {
       { "run_number",   required_argument,   0,                'n' },
@@ -98,6 +100,8 @@ int main(int argc, char* argv[]){
       { "masspnt",      required_argument,   0,                'm' },
       { "bootstrap",    no_argument,         &do_bootstrap,    'o' },
       { "fracevts",     required_argument,   0,                'c' },
+      { "numPE",        required_argument,   0,                '1' },
+      { "PE",           required_argument,   0,                '2' },
       // If the lmbl flag is not entered, lengthscale_mbl has default value -1.
       // This instructs the code to not use mbl in the fit.
       // The same goes for each other kinematic variable.
@@ -107,7 +111,7 @@ int main(int argc, char* argv[]){
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdexahponbtm:c:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdexahponbtm:c:1:2:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -148,6 +152,14 @@ int main(int argc, char* argv[]){
 
          case 'c' :
             fracevts = atof(optarg);
+            break;
+
+         case '1' :
+            numPE = atoi(optarg);
+            break;
+
+         case '2':
+            PE = atoi(optarg);
             break;
 
          case 'b' :
@@ -226,12 +238,12 @@ int main(int argc, char* argv[]){
 
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 0, randseed, -1 );
+                  "RealData", eventvec_train, 0, randseed, -1, -1, -1 );
          }else{
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 1, randseed, -1 );
+                  "RealData", eventvec_train, 1, randseed, -1, -1, -1 );
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_test, 2, randseed, fracevts );
+                  "RealData", eventvec_test, 2, randseed, fracevts, numPE, PE );
          }
 
       }

@@ -185,8 +185,9 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    }
    if( numPE != -1 ){
       int nevts = end-start;
-      start = start + PE*nevts/numPE;
-      end = start + PE*nevts/numPE;
+      int begin = start;
+      start = begin + PE*nevts/numPE;
+      end = begin + (PE+1)*nevts/numPE;
    }
 
 

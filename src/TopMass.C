@@ -51,6 +51,7 @@ Fitter::Fitter(){
    // fit range
    rangembl = 300;
    range220 = 300;
+   range_maos220 = 500;
    lbnd = 0;
    rbnd = 0;
 
@@ -58,7 +59,11 @@ Fitter::Fitter(){
 
    // gaussian process length scales
    gplength_mbl = 25;
-   gplength_mt = 3;
+   gplength_220 = 25;
+   gplength_maos220 = 25;
+   gplength_mt_mbl = 3;
+   gplength_mt_220 = 3;
+   gplength_mt_maos220 = 3;
 
 }
 
@@ -141,6 +146,9 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    TLorentzVector *lep2 = new TLorentzVector();
    TLorentzVector *met = new TLorentzVector();
 
+   TLorentzVector *nGEN = new TLorentzVector();
+   TLorentzVector *nbarGEN = new TLorentzVector();
+
    int nvert;
    double jet1PtRes, jet1PhiRes, jet1EtaRes, jet2PtRes, jet2PhiRes, jet2EtaRes;
    int lpPdgIdGEN, lmPdgIdGEN, nPdgIdGEN, nbPdgIdGEN;
@@ -150,6 +158,16 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    // open ntuple
    TFile file( path.c_str() );
    TTree *tree = (TTree*)file.Get(selection.c_str());
+
+//   tree->SetBranchAddress("generatedJet1FourVector", &jet1);
+//   tree->SetBranchAddress("generatedJet2FourVector", &jet2);
+//   tree->SetBranchAddress("bGEN", &jet1);
+//   tree->SetBranchAddress("bbarGEN", &jet2);
+//   tree->SetBranchAddress("lpGEN", &lep1);
+//   tree->SetBranchAddress("lmGEN", &lep2);
+//   tree->SetBranchAddress("generatedMetFourVector", &met);
+//   tree->SetBranchAddress("nGEN", &nGEN);
+//   tree->SetBranchAddress("nbarGEN", &nbarGEN);
 
    tree->SetBranchAddress("jet1FourVector", &jet1);
    tree->SetBranchAddress("jet2FourVector", &jet2);
@@ -179,14 +197,18 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
 
    // subset of events to use (for training, testing)
    int start = 0;
-   int end = tree->GetEntries();
+   int treesize = tree->GetEntries();
+//   int treesize = tree->GetEntries()/100;
+//   int treesize = 40;
+   int end = treesize;
+
    if( opt == 1 ){
       start = 0;
-      end = tree->GetEntries()/2;
+      end = treesize/2;
    }
    if( opt == 2 ){
-      start = tree->GetEntries()/2;
-      end = tree->GetEntries();
+      start = treesize/2;
+      end = treesize;
    }
 
    // temp
@@ -226,6 +248,10 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       evtemp.lep2 = *lep2;
 
       evtemp.met = *met;
+
+      // generated neutrinos -- used for testing Maos
+      evtemp.nGEN = *nGEN;
+      evtemp.nbarGEN = *nbarGEN;
 
       //
       // classify events
@@ -276,15 +302,98 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
 
 void Fitter::GetVariables( vector<Event>& eventvec ){
 
+int j=0;
    Mt2Calculator::Calculator Calc;
    for( vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
 
+std::cout <<"j = "<<j<<std::endl;
+j++;
+
       Calc.SetParticles( ev->jet1, ev->jet2, ev->lep1, ev->lep2, ev->met );
+
+std::cout << "w mass = " << (ev->lep1 + ev->nGEN).M() << std::endl;
+std::cout << "w mass = " << (ev->lep2 + ev->nbarGEN).M() << std::endl;
+std::cout << "t mass = " << (ev->jet1 + ev->lep1 + ev->nGEN).M() << std::endl;
+std::cout << "t mass = " << (ev->jet2 + ev->lep2 + ev->nbarGEN).M() << std::endl;
+std::cout << "met = " << (ev->met.Pt()) << std::endl;
+std::cout << "nGEN+nbarGEN = " << (ev->nGEN + ev->nbarGEN).Pt() << std::endl;
 
       ev->mt2_221 = Calc.GetMt2(2,1);
       ev->mt2_220 = Calc.GetMt2(2,0);
       ev->mt2_210 = Calc.GetMt2(1,0);
       ev->mbls = Calc.GetBlInvariantMasses();
+
+      //Declare variables to accept Maos values
+      //neutrino 4-vectors
+      TLorentzVector maos210_neu1p, maos210_neu1m, maos210_neu2p, maos210_neu2m;
+      TLorentzVector maos220_neu1ap, maos220_neu1am, maos220_neu2ap, maos220_neu2am, maos220_neu1bp, maos220_neu1bm, maos220_neu2bp, maos220_neu2bm;
+
+      //blv masses
+      double maos210_tm1ap, maos210_tm1am, maos210_tm2ap, maos210_tm2am, maos210_tm1bp, maos210_tm1bm, maos210_tm2bp, maos210_tm2bm;
+      double maos220_tm1ap, maos220_tm1am, maos220_tm2ap, maos220_tm2am, maos220_tm1bp, maos220_tm1bm, maos220_tm2bp, maos220_tm2bm;
+
+      //calculate values and set above variables to them; then set event variables to these
+      ev->mt2_210grid = Calc.MaosReturn210( maos210_neu1p, maos210_neu1m, maos210_neu2p, maos210_neu2m, maos210_tm1ap, maos210_tm1am, maos210_tm2ap, maos210_tm2am, maos210_tm1bp, maos210_tm1bm, maos210_tm2bp, maos210_tm2bm );
+      std::vector<double> Mt2_220grid = Calc.MaosReturn220( maos220_neu1ap, maos220_neu1am, maos220_neu2ap, maos220_neu2am, maos220_neu1bp, maos220_neu1bm, maos220_neu2bp, maos220_neu2bm, maos220_tm1ap, maos220_tm1am, maos220_tm2ap, maos220_tm2am, maos220_tm1bp, maos220_tm1bm, maos220_tm2bp, maos220_tm2bm);
+      ev->mt2_220grida = Mt2_220grid.at(0);
+      ev->mt2_220gridb = Mt2_220grid.at(1);
+
+      ev->maos210_neutrino1p = maos210_neu1p;
+      ev->maos210_neutrino1m = maos210_neu1m;
+      ev->maos210_neutrino2p = maos210_neu2p;
+      ev->maos210_neutrino2m = maos210_neu2m;
+
+      ev->maos220_neutrino1ap = maos220_neu1ap;
+      ev->maos220_neutrino1am = maos220_neu1am;
+      ev->maos220_neutrino2ap = maos220_neu2ap;
+      ev->maos220_neutrino2am = maos220_neu2am;
+      ev->maos220_neutrino1bp = maos220_neu1bp;
+      ev->maos220_neutrino1bm = maos220_neu1bm;
+      ev->maos220_neutrino2bp = maos220_neu2bp;
+      ev->maos220_neutrino2bm = maos220_neu2bm;
+
+      ev->maos210_blvmass1ap = maos210_tm1ap;
+      ev->maos210_blvmass1am = maos210_tm1am;
+      ev->maos210_blvmass2ap = maos210_tm2ap;
+      ev->maos210_blvmass2am = maos210_tm2am;
+      ev->maos210_blvmass1bp = maos210_tm1bp;
+      ev->maos210_blvmass1bm = maos210_tm1bm;
+      ev->maos210_blvmass2bp = maos210_tm2bp;
+      ev->maos210_blvmass2bm = maos210_tm2bm;
+
+      ev->maos220_blvmass1ap = maos220_tm1ap;
+      ev->maos220_blvmass1am = maos220_tm1am;
+      ev->maos220_blvmass2ap = maos220_tm2ap;
+      ev->maos220_blvmass2am = maos220_tm2am;
+      ev->maos220_blvmass1bp = maos220_tm1bp;
+      ev->maos220_blvmass1bm = maos220_tm1bm;
+      ev->maos220_blvmass2bp = maos220_tm2bp;
+      ev->maos220_blvmass2bm = maos220_tm2bm;
+
+//just cout stuff
+double cout220;
+ if (ev->mt2_220grida < ev->mt2_220gridb){cout220 = ev->mt2_220grida;}
+else {cout220 = ev->mt2_220gridb;}
+
+      std::cout << "mt2_220 = " << ev->mt2_220 << "   " << cout220 << std::endl;
+ std::cout << "mt2_220grid = " << ev->mt2_220grida << "   " << ev->mt2_220gridb << std::endl;
+ std::cout << "mt2_210 = " << ev->mt2_210 << "   " << ev->mt2_210grid << std::endl;
+ 
+ std:: cout << "neutrino220s Px = "<< " " <<  maos220_neu1ap.Px()<<  " " << maos220_neu1am.Px()<<  " " << maos220_neu2ap.Px()<< " " << maos220_neu2am.Px()<<  " " << maos220_neu1bp.Px()<<  " " << maos220_neu1bm.Px()<<  " " << maos220_neu2bp.Px()<<  " " << maos220_neu2bm.Px() << std::endl;
+ std::cout << "neutrino210s = Px " << maos210_neu1p.Px()<< " " << maos210_neu1m.Px()<<  " " << maos210_neu2p.Px()<<  " " << maos210_neu2m.Px() << std::endl; 
+
+ std:: cout << "neutrino220s Py = "<< maos220_neu1ap.Py()<<  " " << maos220_neu1am.Py()<< " " << maos220_neu2ap.Py()<< " " << maos220_neu2am.Py()<< " " << maos220_neu1bp.Py()<< " " << maos220_neu1bm.Py()<< " " << maos220_neu2bp.Py()<< " " << maos220_neu2bm.Py() << std::endl;
+ std::cout << "neutrino210s = Pxy " << maos210_neu1p.Py()<< " " << maos210_neu1m.Py()<< " " << maos210_neu2p.Py()<<  " " << maos210_neu2m.Py() << std::endl; 
+
+std:: cout << "neutrino220s Pz = "<< maos220_neu1ap.Pz()<< " " << maos220_neu1am.Pz()<< " " << maos220_neu2ap.Pz()<< " " << maos220_neu2am.Pz()<< " " << maos220_neu1bp.Pz()<< " " << maos220_neu1bm.Pz()<< " " << maos220_neu2bp.Pz()<< " " << maos220_neu2bm.Pz() << std::endl;
+ std::cout << "neutrino210s = Pz " << maos210_neu1p.Pz()<< " " << maos210_neu1m.Pz()<< " " << maos210_neu2p.Pz()<< " " << maos210_neu2m.Pz() << std::endl; 
+
+ std:: cout << "neutrino220s M = "<< maos220_neu1ap.M()<< " " << maos220_neu1am.M()<< " " << maos220_neu2ap.M()<< " " << maos220_neu2am.M()<< " " << maos220_neu1bp.M()<< " " << maos220_neu1bm.M()<< " " << maos220_neu2bp.M()<< " " << maos220_neu2bm.M() << std::endl;
+ std::cout << "neutrino210s = M " << maos210_neu1p.M()<< " " << maos210_neu1m.M()<< " " << maos210_neu2p.M()<< " " << maos210_neu2m.M() << std::endl; 
+
+//W mass
+ std:: cout << "W 220 M = "<< (maos220_neu1ap+ev->lep1).M()<< " " << (maos220_neu1am+ev->lep1).M()<< " " << (maos220_neu2ap+ev->lep2).M()<< " " << (maos220_neu2am+ev->lep2).M()<< " " << (maos220_neu1bp+ev->lep1).M()<< " " << (maos220_neu1bm+ev->lep1).M()<< " " << (maos220_neu2bp+ev->lep2).M()<< " " << (maos220_neu2bm+ev->lep2).M() << std::endl;
+ std::cout << "W 210s = M " << (maos210_neu1p+ev->lep1).M()<< " " << (maos210_neu1m+ev->lep1).M()<< " " << (maos210_neu2p+ev->lep2).M()<< " " << (maos210_neu2m+ev->lep2).M() << std::endl; 
 
    }
 
@@ -300,7 +409,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    gMinuit->SetPrintLevel(3);
 
    // Dimension of fFunc needs to be changed if adding more variables
-   fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 3 );
+   fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 4 );
    gMinuit->SetFunction( *fFunc );
    gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
 
@@ -316,6 +425,13 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
       gMinuit->SetLimitedVariable(2, "norm220", 0.7, 0.1, 0, 1.0);
    } else {
       gMinuit->SetFixedVariable(2, "norm220", 0.70712);
+   }
+
+   //MAOS 220
+   if (gplength_maos220 != -1){
+      gMinuit->SetLimitedVariable(3, "norm_maos220", 0.7, 0.1, 0, 1.0);
+   } else {
+      gMinuit->SetFixedVariable(3, "norm_maos220", 0.70712);
    }
    //gMinuit->SetFixedVariable(0, "topMass", 172.5);
    //gMinuit->SetFixedVariable(1, "norm", 0.70712);
@@ -337,12 +453,12 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 double Fitter::Min2LL(const double *x){
 
    // any additional variables need to be added here
-   string names [] = {"mbl","mt2_220_nomatchmbl"};
-   double gplengths [] = {gplength_mbl, gplength_220};
-   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_220};
-   TVectorD aGPsigs [] = {aGPsig, aGPsig220};
-   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg220};
-   double ranges [] = {rangembl, range220};
+   string names [] = {"mbl","mt2_220_nomatchmbl","maos220blv"};
+   double gplengths [] = {gplength_mbl, gplength_220, gplength_maos220};
+   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_220, gplength_mt_maos220};
+   TVectorD aGPsigs [] = {aGPsig, aGPsig220, aGPsig_maos220};
+   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg220, aGPbkg_maos220};
+   double ranges [] = {rangembl, range220, range_maos220};
 
    double m2ll = 0;
 
@@ -375,6 +491,8 @@ double Fitter::Min2LL(const double *x){
          for( vector<Event>::iterator ev = eventvec_fit->begin(); ev < eventvec_fit->end(); ev++ ){
             if( !(ev->fit_event) ) continue;
 
+            if ( !(ev->jet1.M() < 40 and ev->jet2.M() < 40) ) continue;
+
             if (i == 0){ // for mbl
                for( unsigned int j=0; j < ev->mbls.size(); j++ ){
                   if( ev->mbls[j] > ranges[i] ) continue;
@@ -384,10 +502,22 @@ double Fitter::Min2LL(const double *x){
                }
             }
             else if (i == 1){ // for 220
+               for ( unsigned int j=0; j < ev->mbls.size(); j++){
+                  if ( ev->mbls[j] == ev->mt2_220 ) continue;
+               }
                if( ev->mt2_220 > ranges[i] ) continue;
                if( ev->mt2_220 > lbnd and ev->mt2_220 < rbnd ) continue;
                double val = shape.Ftot( &(ev->mt2_220), pmbl );
                m2ll -= 2.0*ev->weight*log( val );
+            }
+            else if (i == 2){ // for Maos 220
+               double tm_array [] = {ev->maos220_blvmass1ap, ev->maos220_blvmass1am, ev->maos220_blvmass2ap, ev->maos220_blvmass2am, ev->maos220_blvmass1bp, ev->maos220_blvmass1bm, ev->maos220_blvmass2ap, ev->maos220_blvmass2bm};
+               for ( unsigned int j=0; j < sizeof(tm_array)/sizeof(tm_array[0]); j++){
+                  if( tm_array[j] > ranges[i] ) continue;
+                  if( tm_array[j] > lbnd and tm_array[j] < rbnd ) continue;
+                  double val = shape.Ftot( &(tm_array[j]), pmbl );
+                  m2ll -= 2.0*ev->weight*log( val );
+               }
             }
 
          }
@@ -417,15 +547,15 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
    fileout->cd();
 
    // any additional variables need to be added here
-   string names [] = {"mbl","mbl_fit","mt2_220_nomatchmbl"};
-   string fakenames [] = {"mbl","mbl","mt2_220_nomatchmbl"}; // just a quirk to suit mbl_fit
-   double gplengths [] = {gplength_mbl, gplength_mbl, gplength_220};
-   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_mbl, gplength_mt_220};
-   TVectorD aGPsigs [] = {aGPsig, aGPsig, aGPsig220};
-   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg, aGPbkg220};
-   double ranges [] = {rangembl, rangembl, range220};
-   double xmin1s [] = {xmin[1], xmin[1], xmin[2]}; // the background for each variable, as it is positioned in minuit's parameter vector
-   double xerr1s [] = {xerr[1], xerr[1], xerr[2]}; // the background for each variable, as it is positioned in minuit's parameter vector
+   string names [] = {"mbl","mbl_fit","mt2_220_nomatchmbl","maos220blv"};
+   string fakenames [] = {"mbl","mbl","mt2_220_nomatchmbl","maos220blv"}; // just a quirk to suit mbl_fit
+   double gplengths [] = {gplength_mbl, gplength_mbl, gplength_220, gplength_maos220};
+   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_mbl, gplength_mt_220, gplength_mt_maos220};
+   TVectorD aGPsigs [] = {aGPsig, aGPsig, aGPsig220, aGPsig_maos220};
+   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg, aGPbkg220, aGPbkg_maos220};
+   double ranges [] = {rangembl, rangembl, range220, range_maos220};
+   double xmin1s [] = {xmin[1], xmin[1], xmin[2], xmin[3]}; // the background for each variable, as it is positioned in minuit's parameter vector
+   double xerr1s [] = {xerr[1], xerr[1], xerr[2], xerr[3]}; // the background for each variable, as it is positioned in minuit's parameter vector
 
    double chi2 = 0;
 

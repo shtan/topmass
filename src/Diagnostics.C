@@ -50,7 +50,7 @@ void Fitter::DeclareHists( map< string, map<string, TH1D*> >& hists_, string lab
       //
 
       hists_["mt2_220"][name] = new TH1D( ("hmt2_220_"+namel).c_str(),
-            "M_{T2} 220;M_{T2} 220 (GeV);Events/2.5 GeV", 100, 0, range220 );
+            "M_{T2} 220;M_{T2} 220 (GeV);Events/3 GeV", 100, 0, range220 );
       hists_["mt2_221"][name] = new TH1D( ("hmt2_221_"+namel).c_str(),
             "M_{T2} 221;M_{T2} 221 (GeV);Events/2 GeV", 100, 50, 250 );
       hists_["mbl"][name] = new TH1D( ("hmbl_"+namel).c_str(),
@@ -62,7 +62,9 @@ void Fitter::DeclareHists( map< string, map<string, TH1D*> >& hists_, string lab
       hists_["mt2_220_matchmbl"][name] = new TH1D( ("hmt2_220_matchmbl_"+namel).c_str(),
             "M_{T2} 220;M_{T2} 220 (GeV);Events/2.5 GeV", 100, 0, range220 );
       hists_["mt2_220_nomatchmbl"][name] = new TH1D( ("hmt2_220_nomatchmbl_"+namel).c_str(),
-            "M_{T2} 220;M_{T2} 220 (GeV);Events/2.5 GeV", 100, 0, range220 );
+            "M_{T2} 220;M_{T2} 220 (GeV);Events/3 GeV", 100, 0, range220 );
+      hists_["maos220blv"][name] = new TH1D( ("hmaos220blv_"+namel).c_str(), 
+            "MAOS from M_{T2} 220, no cuts;blv mass(GeV);Events/5GeV", 100, 0, range_maos220 );
 
       //hists2d_["mblV220"][name] = new TH2D( ("hmblV220_"+namel).c_str(),
       //      "220 vs. mbl", 50, 0, 250, 50, 0, 250 );
@@ -200,6 +202,16 @@ void Fitter::FillHists( map< string, map<string, TH1D*> >& hists_,
       else{
          hists_["mt2_220_nomatchmbl"][type]->Fill( ev->mt2_220, ev->weight );
       }
+
+      //MAOS
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass1ap, ev->weight ); 
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass1am, ev->weight ); 
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass2ap, ev->weight ); 
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass2am, ev->weight ); 
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass1bp, ev->weight ); 
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass1bm, ev->weight ); 
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass2bp, ev->weight ); 
+      hists_["maos220blv"][type]->Fill( ev->maos220_blvmass2bm, ev->weight ); 
 
       //
       // kinematic distributions
@@ -584,14 +596,14 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
    fileout->cd();
 
    // Any additional variables need to be added here
-   string names [] = {"mbl","mbl_fit","mt2_220_nomatchmbl"};
+   string names [] = {"mbl","mbl_fit","mt2_220_nomatchmbl","maos220blv"};
    string sb[] = {"sig","bkg"};
-   string titles [] = {"M_{bl}", "M_{bl}", "M_{T2} 220"};
-   double gplengths [] = {gplength_mbl, gplength_mbl, gplength_220};
-   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_mbl, gplength_mt_220};
-   TVectorD aGPsigs [] = {aGPsig, aGPsig, aGPsig220};
-   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg, aGPbkg220};
-   double ranges [] = {rangembl, rangembl, range220};
+   string titles [] = {"M_{bl}", "M_{bl}", "M_{T2} 220","MAOS from M_{T2} 220, no cuts"};
+   double gplengths [] = {gplength_mbl, gplength_mbl, gplength_220, gplength_maos220};
+   double gplength_mts [] = {gplength_mt_mbl, gplength_mt_mbl, gplength_mt_220, gplength_mt_maos220};
+   TVectorD aGPsigs [] = {aGPsig, aGPsig, aGPsig220, aGPsig_maos220};
+   TVectorD aGPbkgs [] = {aGPbkg, aGPbkg, aGPbkg220, aGPbkg_maos220};
+   double ranges [] = {rangembl, rangembl, range220, range_maos220};
 
    // templates for all masses
    double masspnts [] = {161.5,163.5,166.5,169.5,172.5,175.5,178.5,181.5};

@@ -2,6 +2,8 @@
 #include "TTree.h"
 #include "TFile.h"
 
+#include "Plotting.h"
+
 #include <vector>
 #include <iostream>
 #include <iomanip>
@@ -53,12 +55,15 @@ int main(int argc, char* argv[]){
    double mt=0, mt_err=0;
    double kmbl=0, kmbl_err=0;
    double k220=0, k220_err=0;
+   double kmaos220=0, kmaos220_err=0;
    double mcmass=0;
    double fitchi2=0;
    double gplength_mbl=-1;
    double gplength_220=-1;
+   double gplength_maos220=-1;
    double gplength_mt_mbl=0;
    double gplength_mt_220=0;
+   double gplength_mt_maos220=0;
    double lbound_mbl=0;
    double rbound_mbl=0;
    
@@ -71,12 +76,16 @@ int main(int argc, char* argv[]){
    tree->Branch("kbml_err", &kmbl_err);
    tree->Branch("k220", &k220);
    tree->Branch("k220_err", &k220_err);
+   tree->Branch("kmaos220", &kmaos220);
+   tree->Branch("kmaos220_err", &kmaos220_err);
    tree->Branch("mcmass", &mcmass);
    tree->Branch("fitchi2", &fitchi2);
    tree->Branch("gplength_mbl", &gplength_mbl);
    tree->Branch("gplength_220", &gplength_220);
+   tree->Branch("gplength_maos220", &gplength_maos220);
    tree->Branch("gplength_mt_mbl", &gplength_mt_mbl);
    tree->Branch("gplength_mt_220", &gplength_mt_220);
+   tree->Branch("gplength_mt_maos220", &gplength_mt_maos220);
    tree->Branch("lbound_mbl", &lbound_mbl);
    tree->Branch("rbound_mbl", &rbound_mbl);
 
@@ -89,8 +98,10 @@ int main(int argc, char* argv[]){
    float masspnt = 0;
    float lengthscale_mbl = -1;
    float lengthscale_220 = -1;
+   float lengthscale_maos220 = -1;
    float lengthscale_mt_mbl = 32;
    float lengthscale_mt_220 = 32;
+   float lengthscale_mt_maos220 = 32;
    int do_bootstrap = 0;
 
    struct option longopts[] = {
@@ -105,9 +116,11 @@ int main(int argc, char* argv[]){
       // This instructs the code to not use mbl in the fit.
       // The same goes for each other kinematic variable.
       { "l220",         required_argument,   0,                '2' },
+      { "lmaos220",     required_argument,   0,                '3' },
       { "lmt_mbl",      required_argument,   0,                't' },
       // Top mass lengthscales for mbl and 220 are entered separately
       { "lmt_220",      required_argument,   0,                '6' },
+      { "lmt_maos220",  required_argument,   0,                '7' },
       { "lbnd",         required_argument,   0,                'l' },
       { "rbnd",         required_argument,   0,                'r' },
       { "bootstrap",    no_argument,         &do_bootstrap,    'o' },
@@ -146,12 +159,20 @@ int main(int argc, char* argv[]){
             lengthscale_220 = atof(optarg);
             break;
 
+         case '3' :
+            lengthscale_maos220 = atof(optarg);
+            break;
+
          case 't' :
             lengthscale_mt_mbl = atof(optarg);
             break;
 
          case '6' :
             lengthscale_mt_220 = atof(optarg);
+            break;
+
+         case '7' :
+            lengthscale_mt_maos220 = atof(optarg);
             break;
 
          case 'l' :
@@ -195,7 +216,7 @@ int main(int argc, char* argv[]){
 
    // Check that at least one kinematic variable's lengthscale has been entered.
    // Any additional distributions need to be added here
-   if (lengthscale_mbl == -1 and lengthscale_220 == -1 and do_fit == 1){
+   if (lengthscale_mbl == -1 and lengthscale_220 == -1 and lengthscale_maos220 == -1 and do_fit == 1){
       std::cout << "At least one variable needed to do fit.  Input at least one lengthscale." << std::endl;
       print_usage();
       return -1;
@@ -203,8 +224,10 @@ int main(int argc, char* argv[]){
 
    fitter.gplength_mbl = lengthscale_mbl;
    fitter.gplength_220 = lengthscale_220;
+   fitter.gplength_maos220 = lengthscale_maos220;
    fitter.gplength_mt_mbl = lengthscale_mt_mbl;
    fitter.gplength_mt_220 = lengthscale_mt_220;
+   fitter.gplength_mt_maos220 = lengthscale_mt_maos220;
 
    fitter.LoadDatasets( datasets );
 
@@ -237,7 +260,8 @@ int main(int argc, char* argv[]){
 
       // events for training and testing
       if( name.compare("data") != 0 ){
-
+      // Use the following line if only want to run on ttbar 172.5 set
+      //if ( name.compare("ttbar172") ==0 ){
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
                   "RealData", eventvec_train, 0, randseed );
@@ -252,10 +276,19 @@ int main(int argc, char* argv[]){
 
    }
 
+   //cout eventvec sizes, to check stuff
+   //std::cout << "size = " << eventvec_datamc.size() << std::endl;
+   //std::cout << "size = " << eventvec_train.size() << std::endl;
+   //std::cout << "size = " << eventvec_test.size() << std::endl;
+
    // data/mc plots, kinematic distributions
    fitter.GetVariables( eventvec_datamc );
    fitter.GetVariables( eventvec_train );
    fitter.GetVariables( eventvec_test );
+
+   //Maos nan study
+   //Plotting maosplot;
+   //maosplot.MaosNan( eventvec_train);
 
    fitter.DeclareHists( hists_train_, "train" );
    fitter.FillHists( hists_train_, eventvec_train );
@@ -343,6 +376,18 @@ int main(int argc, char* argv[]){
             fitter.aGPbkg220 = fptr220->aGPbkg;
          }
 
+         // train GP for maos 220
+         if (lengthscale_maos220 != -1){
+            Shapes * fptr_maos220 = new Shapes( "maos220", fitter.gplength_maos220, fitter.gplength_mt_maos220,
+                  fitter.lbnd, fitter.rbnd );
+            fptr_maos220->TrainGP( hists_train_ );
+
+            fitter.aGPsig_maos220.ResizeTo( fptr_maos220->aGPsig.GetNoElements() );
+            fitter.aGPsig_maos220 = fptr_maos220->aGPsig;
+            fitter.aGPbkg_maos220.ResizeTo( fptr_maos220->aGPbkg.GetNoElements() );
+            fitter.aGPbkg_maos220 = fptr_maos220->aGPbkg;
+         }
+
          fitter.PlotTemplates( hists_train_ );
 
          // events for fitting, hists for training
@@ -360,11 +405,15 @@ int main(int argc, char* argv[]){
          mt_err = par_err[0];
          kmbl_err = par_err[1];
          k220_err = par_err[2];
+         kmaos220 = par[3];
+         kmaos220_err = par_err[3];
          fitchi2 = fitter.fitchi2;
          gplength_mbl = lengthscale_mbl;
          gplength_220 = lengthscale_220;
+         gplength_maos220 = lengthscale_maos220;
          gplength_mt_mbl = lengthscale_mt_mbl;
          gplength_mt_220 = lengthscale_mt_220;
+         gplength_mt_maos220 = lengthscale_mt_maos220;
 
          tree->Fill();
 
@@ -480,6 +529,18 @@ int main(int argc, char* argv[]){
                fitter.aGPbkg220 = fptr220->aGPbkg;
             }
 
+            // train GP for maos 220
+            if (lengthscale_maos220 != -1){
+               Shapes * fptr_maos220 = new Shapes( "maos220", fitter.gplength_maos220, fitter.gplength_mt_maos220,
+                     fitter.lbnd, fitter.rbnd );
+               fptr_maos220->TrainGP( hists_train_ );
+
+               fitter.aGPsig_maos220.ResizeTo( fptr_maos220->aGPsig.GetNoElements() );
+               fitter.aGPsig_maos220 = fptr_maos220->aGPsig;
+               fitter.aGPbkg_maos220.ResizeTo( fptr_maos220->aGPbkg.GetNoElements() );
+               fitter.aGPbkg_maos220 = fptr_maos220->aGPbkg;
+            }
+
             typedef map<string, TH1D*> tmap;
             typedef map<string, tmap> hmap;
             for( hmap::iterator h = hists_train_.begin(); h != hists_train_.end(); h++){
@@ -511,11 +572,15 @@ int main(int argc, char* argv[]){
             kmbl_err = par_err[1];
             k220 = par[2];
             k220_err = par_err[2];
+            kmaos220 = par[3];
+            kmaos220_err = par_err[3];
             fitchi2 = fitter.fitchi2;
             gplength_mbl = lengthscale_mbl;
             gplength_220 = lengthscale_220;
+            gplength_maos220 = lengthscale_maos220;
             gplength_mt_mbl = lengthscale_mt_mbl;
             gplength_mt_220 = lengthscale_mt_220;
+            gplength_mt_maos220 = lengthscale_mt_maos220;
             lbound_mbl = fitter.lbnd;
             rbound_mbl = fitter.rbnd;
 

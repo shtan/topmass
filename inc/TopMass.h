@@ -50,8 +50,47 @@ struct Event {
    double mt2_221;
    vector<double> mbls;
 
+   // kinematic variables for Maos
+   double mt2_210grid;
+   double mt2_220grida;
+   double mt2_220gridb;
+
+   // Maos neutrinos
+   TLorentzVector maos210_neutrino1p;
+   TLorentzVector maos210_neutrino1m;
+   TLorentzVector maos210_neutrino2p;
+   TLorentzVector maos210_neutrino2m;
+
+   TLorentzVector maos220_neutrino1ap;
+   TLorentzVector maos220_neutrino1am;
+   TLorentzVector maos220_neutrino2ap;
+   TLorentzVector maos220_neutrino2am;
+   TLorentzVector maos220_neutrino1bp;
+   TLorentzVector maos220_neutrino1bm;
+   TLorentzVector maos220_neutrino2bp;
+   TLorentzVector maos220_neutrino2bm;
+
+   double maos210_blvmass1ap;
+   double maos210_blvmass1am;
+   double maos210_blvmass2ap;
+   double maos210_blvmass2am;
+   double maos210_blvmass1bp;
+   double maos210_blvmass1bm;
+   double maos210_blvmass2bp;
+   double maos210_blvmass2bm;
+
+   double maos220_blvmass1ap;
+   double maos220_blvmass1am;
+   double maos220_blvmass2ap;
+   double maos220_blvmass2am;
+   double maos220_blvmass1bp;
+   double maos220_blvmass1bm;
+   double maos220_blvmass2bp;
+   double maos220_blvmass2bm;
+
    // reconstructed objects
    TLorentzVector jet1, jet2, lep1, lep2, met;
+   TLorentzVector nGEN, nbarGEN;
 
    // for fit
    bool fit_event;
@@ -69,9 +108,48 @@ struct Event {
       lep2 = TLorentzVector();
       met = TLorentzVector();
 
+      nGEN = TLorentzVector();
+      nbarGEN = TLorentzVector();
+
       mt2_220 = 0;
       mt2_210 = 0;
       mt2_221 = 0;
+
+      mt2_210grid = 0;
+      mt2_220grida = 0;
+      mt2_220gridb = 0;
+
+      maos210_neutrino1p = TLorentzVector();
+      maos210_neutrino1m = TLorentzVector();
+      maos210_neutrino2p = TLorentzVector();
+      maos210_neutrino2m = TLorentzVector();
+
+      maos220_neutrino1ap = TLorentzVector();
+      maos220_neutrino1am = TLorentzVector();
+      maos220_neutrino2ap = TLorentzVector();
+      maos220_neutrino2am = TLorentzVector();
+      maos220_neutrino1bp = TLorentzVector();
+      maos220_neutrino1bm = TLorentzVector();
+      maos220_neutrino2bp = TLorentzVector();
+      maos220_neutrino2bm = TLorentzVector();
+
+      maos210_blvmass1ap = 0;
+      maos210_blvmass1am = 0;
+      maos210_blvmass2ap = 0;
+      maos210_blvmass2am = 0;
+      maos210_blvmass1bp = 0;
+      maos210_blvmass1bm = 0;
+      maos210_blvmass2bp = 0;
+      maos210_blvmass2bm = 0;
+
+      maos220_blvmass1ap = 0;
+      maos220_blvmass1am = 0;
+      maos220_blvmass2ap = 0;
+      maos220_blvmass2am = 0;
+      maos220_blvmass1bp = 0;
+      maos220_blvmass1bm = 0;
+      maos220_blvmass2bp = 0;
+      maos220_blvmass2bm = 0;
 
       fit_event = false;
    }
@@ -106,17 +184,22 @@ class Fitter{
       TH1D* hmbl_bkg;
       TVectorD aGPsig220;
       TVectorD aGPbkg220;
+      TVectorD aGPsig_maos220;
+      TVectorD aGPbkg_maos220;
 
       double rangembl;
       double range220;
+      double range_maos220;
       double rbnd, lbnd;
       bool compute_profile;
       double fitchi2;
       double gplength_mbl;
       double gplength_220;
+      double gplength_maos220;
       double gplength_mt;
       double gplength_mt_mbl;
       double gplength_mt_220;
+      double gplength_mt_maos220;
       
    private:
 

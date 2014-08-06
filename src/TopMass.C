@@ -54,6 +54,8 @@ Fitter::Fitter(){
    dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 13.0, 18.0, 1.5, 12.0 );
    dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 13.0, 18.0, 1.5, 12.0 );
 
+   namelabel = "";
+
 }
 
 Fitter::~Fitter(){
@@ -69,7 +71,7 @@ Fitter::~Fitter(){
 void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 
    // file path
-   string path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140715/";
+   string path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20140715/";
 
    // filenames
    datasets[ "data" ]      = Dataset( path, "ntuple_data.root" );

@@ -138,6 +138,8 @@ class Fitter{
       bool compute_profile;
       double fitchi2;
 
+      string namelabel;
+
       double tsig_mbl_chi2 [8];
       double tbkg_mbl_chi2 [8];
       

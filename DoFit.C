@@ -30,6 +30,7 @@ void print_usage(){
    cout << setw(25) << "\t-c --fracevts" << "Fit fraction of events.\n";
    cout << setw(25) << "\t-b --mbl" << "Activate Mbl distribution.\n";
    cout << setw(25) << "\t-t --mt2" << "Activate MT2 220 distribution.\n";
+   cout << setw(25) << "\t-r --relnorm" << "Multiplicative factor for gnorm1.\n";
    cout << setw(25) << "\t-h --help" << "Display this menu.\n";
    cout << endl;
    return;
@@ -86,6 +87,7 @@ int main(int argc, char* argv[]){
    int do_mbl = 0;
    int do_mt2 = 0;
    double fracevts = -1;
+   double relnorm = -1;
 
    struct option longopts[] = {
       { "run_number",   required_argument,   0,                'n' },
@@ -103,11 +105,12 @@ int main(int argc, char* argv[]){
       // The same goes for each other kinematic variable.
       { "mbl",          no_argument,         &do_mbl,          'b' },
       { "mt2",          no_argument,         &do_mt2,          't' },
+      { "relnorm",      required_argument,   0,                'r' },
       { "help",         no_argument,         NULL,             'h' },
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdexahponbtm:c:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdexahponbtm:c:r:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -158,6 +161,10 @@ int main(int argc, char* argv[]){
             do_mt2 = true;
             break;
 
+         case 'r' :
+            relnorm = atof(optarg);
+            break;
+
          case 'h' :
             print_usage();
             return -1;
@@ -180,6 +187,12 @@ int main(int argc, char* argv[]){
 
       }
    }
+
+   if( relnorm != -1 )
+      fitter.dists["mbl"].gnorm1 *= relnorm;
+   std::stringstream s;
+   s << relnorm;
+   fitter.namelabel = s.str();
 
    fitter.dists["mbl"].activate = do_mbl;
    fitter.dists["mt2_220_nomatchmbl"].activate = do_mt2;

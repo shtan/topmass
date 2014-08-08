@@ -188,8 +188,10 @@ int main(int argc, char* argv[]){
       }
    }
 
-   if( relnorm != -1 )
+   if( relnorm != -1 ){
       fitter.dists["mbl"].gnorm1 *= relnorm;
+      fitter.dists["mbl"].gnorm2 /= relnorm;
+   }
    std::stringstream s;
    s << relnorm;
    fitter.namelabel = s.str();

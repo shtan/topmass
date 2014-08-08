@@ -193,8 +193,8 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
       binerr_bkg *= sqrt(gnorm2);
       for(int j=0; j < ntrain*nmasses; j++){
          if( i==j ){
-            Nsig[i][j] = 10E-7;//binerr_sig*binerr_sig;//pow( max(binerr_sig,0.001), 2 );
-            Nbkg[i][j] = 10E-7;//binerr_bkg*binerr_bkg;//pow( max(binerr_bkg,0.001), 2 );
+            Nsig[i][j] = binerr_sig*binerr_sig;//pow( max(binerr_sig,0.001), 2 );
+            Nbkg[i][j] = binerr_bkg*binerr_bkg;//pow( max(binerr_bkg,0.001), 2 );
          }else{
             Nsig[i][j] = 0;
             Nbkg[i][j] = 0;

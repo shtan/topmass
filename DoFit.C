@@ -556,8 +556,32 @@ int main(int argc, char* argv[]){
    if( do_learnparams ){
       string name = "mbl";
       Distribution *dist = &(fitter.dists[name]);
+      Shapes * fptrtmp = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
+      fptrtmp->LearnGPparams( hists_train_ );
+
+      dist->glx = fptrtmp->lx;
+      dist->glmt = fptrtmp->lmass;
+      dist->gnorm1 = fptrtmp->gnorm1;
+      dist->gnorm2 = fptrtmp->gnorm2;
+
+      double m2llsig, m2llbkg;
       Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
-      fptr->LearnGPparams( hists_train_ );
+      fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
+
+      dist->aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
+      dist->aGPsig = fptr->aGPsig;
+      dist->aGPbkg.ResizeTo( fptr->aGPbkg.GetNoElements() );
+      dist->aGPbkg = fptr->aGPbkg;
+
+      dist->Ainv_sig.ResizeTo( fptr->aGPsig.GetNoElements(), fptr->aGPsig.GetNoElements() );
+      dist->Ainv_sig = fptr->Ainv_sig;
+      dist->Ainv_bkg.ResizeTo( fptr->aGPbkg.GetNoElements(), fptr->aGPbkg.GetNoElements() );
+      dist->Ainv_bkg = fptr->Ainv_bkg;
+
+      cout << "begin PlotTemplates" << endl;
+      fitter.PlotTemplates( hists_train_ );
+      cout << "end PlotTemplates" << endl;
+
       delete fptr;
    }
 

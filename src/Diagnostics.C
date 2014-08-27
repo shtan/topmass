@@ -583,7 +583,9 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
       pathstr = path;
    }
 
-   TFile *fileout = new TFile( (pathstr+"/plotsTemplates"+namelabel+".root").c_str(), "RECREATE" );
+   // TODO
+   //TFile *fileout = new TFile( (pathstr+"/plotsTemplates"+namelabel+".root").c_str(), "RECREATE" );
+   TFile *fileout = new TFile( (pathstr+"/plotsTemplates.root").c_str(), "RECREATE" );
    fileout->cd();
 
 

@@ -45,6 +45,8 @@ class Shapes{
       ROOT::Math::IMultiGenFunction* fFunc;
       map< string, map<string, TH1D*> >* hists_train_;
 
+      bool do_gpvar;
+
 };
 
 #endif

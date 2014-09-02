@@ -69,7 +69,8 @@ Fitter::~Fitter(){
 void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 
    // file path
-   string path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140715/";
+   string path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140730/";
+   //string path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20140730/";
 
    // filenames
    datasets[ "data" ]      = Dataset( path, "ntuple_data.root" );

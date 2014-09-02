@@ -671,6 +671,12 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                fptr->aGPsig = dist->aGPsig;
                fptr->aGPbkg.ResizeTo( dist->aGPbkg.GetNoElements() );
                fptr->aGPbkg = dist->aGPbkg;
+
+               fptr->Ainv_sig.ResizeTo( dist->aGPsig.GetNoElements(), dist->aGPsig.GetNoElements() );
+               fptr->Ainv_sig = dist->Ainv_sig;
+               fptr->Ainv_bkg.ResizeTo( dist->aGPbkg.GetNoElements(), dist->aGPbkg.GetNoElements() );
+               fptr->Ainv_bkg = dist->Ainv_bkg;
+
                TF1 *ftemplate = new TF1("ftemplate", fptr, &Shapes::Ftot, 0, dist->range, 5);
                ftemplate->SetNpx(500);
 
@@ -682,6 +688,17 @@ void Fitter::PlotTemplates( map< string, map<string, TH1D*> >& hists_ ){
                      1.0, integralsig, integralbkg );
 
                ftemplate->SetLineWidth(2);
+
+               // TGraph with GP covariance
+               TGraphErrors *gpvar = new TGraphErrors();
+               for(int x=0; x < dist->range; x++){
+                  gpvar->SetPoint(x, x, ftemplate->Eval(x));
+                  gpvar->SetPointError(x, 0, sqrt(fptr->Fmbl_gp_var(x,masspnts[j],sb[k])));
+               }
+               gpvar->SetLineColor(2);
+               gpvar->SetFillColor(5);
+               gpvar->Draw("E3");
+
                ftemplate->DrawCopy("same");
                hmc->DrawCopy("same"); // redraw points
 

@@ -33,6 +33,9 @@ Shapes::Shapes( string var, double gplength_x, double gplength_mt, double norm1,
    lbx = 0.0;
    rbx = 0.0;
 
+   // flag for cross validation two-stage fit
+   do_gpvar = false;
+
 }
 
 Shapes::~Shapes(){
@@ -273,26 +276,40 @@ void Shapes::TrainGP( map< string, map<string, TH1D*> > & hists_,
 void Shapes::LearnGPparams( map< string, map<string, TH1D*> > & hists_ ){
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
-   //gMinuit->SetTolerance(0.001);
    gMinuit->SetPrintLevel(3);
 
-   //fFunc = new ROOT::Math::Functor ( this, &Shapes::GPm2ll, 4 );
+   // set training hist
+   hists_train_ = &hists_;
+
    fFunc = new ROOT::Math::Functor ( this, &Shapes::GPm2llX, 4 );
    gMinuit->SetTolerance(1000.0);
    gMinuit->SetFunction( *fFunc );
-   //gMinuit->SetFixedVariable(0, "gpnorm1", 1.0);
+
+   // stage 1 -- use bin errros as variance
+   cout << "**************** Cross Validation Round 1 *****************" << endl;
+   do_gpvar = false;
    gMinuit->SetLowerLimitedVariable(0, "gpnorm1", 5.0, 0.1, 0.0);
    gMinuit->SetLowerLimitedVariable(1, "gpnorm2", 10.0, 0.1, 0.0);
    gMinuit->SetLowerLimitedVariable(2, "lx", 15, 1, 0.0);
    gMinuit->SetLowerLimitedVariable(3, "lmass", 30, 1, 0.0);
-   //gMinuit->SetFixedVariable(1, "gpnorm2", 11.8);
-   //gMinuit->SetFixedVariable(2, "lx", 13.4);
-   //gMinuit->SetFixedVariable(3, "lmass", 17.8);
-
-   // set training hist and minimize
-   hists_train_ = &hists_;
 
    gMinuit->Minimize();
+
+   cout << "**************** Cross Validation Round 2 *****************" << endl;
+   do_gpvar = false;
+   gMinuit->SetLimitedVariable(0, "gpnorm1", xstmp[0], 1, 0.5*xstmp[0], 2*xstmp[0]);
+   gMinuit->SetLowerLimitedVariable(1, "gpnorm2", xstmp[1], 1, 0.0);
+   gMinuit->SetLimitedVariable(2, "lx", xstmp[2], 1, 0.8*xstmp[2], 1.2*xstmp[2]);
+   gMinuit->SetLimitedVariable(3, "lmass", xstmp[3], 1, 0.8*xstmp[3], 1.2*xstmp[3]);
+
+   gMinuit->Minimize();
+
+   const double *xs = gMinuit->X();
+   gnorm1 = xs[0];
+   gnorm2 = xs[1];
+   lx = xs[2];
+   lmass = xs[3];
+
    return;
 }
 
@@ -363,8 +380,10 @@ double Shapes::GPm2llX( const double *x ){
          for(int j=0; j < nmasses; j++){
 
             double mean = Fmbl_gp(ptrainX[i],masspnts[j],"sig");
-            double var = Fmbl_gp_var(ptrainX[i],masspnts[j],"sig");
             double yi = hgp_sig[j]->GetBinContent( hgp_sig[j]->FindBin(ptrainX[i]) );
+            double var = -1;
+            if( do_gpvar ) var = Fmbl_gp_var(ptrainX[i],masspnts[j],"sig");
+            else var = pow(hgp_sig[j]->GetBinError( hgp_sig[j]->FindBin(ptrainX[i]) ), 2);
 
             if( var <= 0 ){
                //cout << "NEGATIVE VARIANCE IN GP: " << var << "  ----> setting to minimum" << endl;

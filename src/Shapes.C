@@ -17,7 +17,7 @@ using namespace std;
 // constructor and destructor
 //
 
-Shapes::Shapes( string var, double gplength_x, double gplength_mt, double norm1, double norm2 ){
+Shapes::Shapes( string var, double gplength_x, double gplength_mt, double norm1, double norm2, double range ){
 
    name = var;
    // GP options
@@ -26,7 +26,7 @@ Shapes::Shapes( string var, double gplength_x, double gplength_mt, double norm1,
    gnorm1 = norm1;
    gnorm2 = norm2;
    int ntrain = 100;
-   double rtrain = 300;
+   double rtrain = range;
    for(int i=0; i < ntrain; i++) ptrain.push_back( (i+0.5)*rtrain/ntrain );
 
    // right and left bounds -- set to zero unless needed
@@ -294,6 +294,12 @@ void Shapes::LearnGPparams( map< string, map<string, TH1D*> > & hists_ ){
    gMinuit->SetLowerLimitedVariable(3, "lmass", 30, 1, 0.0);
 
    gMinuit->Minimize();
+
+   const double *xstmp = gMinuit->X();
+   gnorm1 = xstmp[0];
+   gnorm2 = xstmp[1];
+   lx = xstmp[2];
+   lmass = xstmp[3];
 
    cout << "**************** Cross Validation Round 2 *****************" << endl;
    do_gpvar = false;

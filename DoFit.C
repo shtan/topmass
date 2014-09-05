@@ -29,7 +29,9 @@ void print_usage(){
    cout << setw(25) << "\t-o --bootstrap" << "Turn on bootstrapping.\n";
    cout << setw(25) << "\t-c --fracevts" << "Fit fraction of events.\n";
    cout << setw(25) << "\t-b --mbl" << "Activate Mbl distribution.\n";
-   cout << setw(25) << "\t-t --mt2" << "Activate MT2 220 distribution.\n";
+   cout << setw(25) << "\t-t --mt2_220" << "Activate MT2 220 distribution.\n";
+   cout << setw(25) << "\t-t --maos220" << "Activate MAOS 220 distribution.\n";
+   cout << setw(25) << "\t-t --maos210" << "Activate MAOS 210 distribution.\n";
    cout << setw(25) << "\t-h --help" << "Display this menu.\n";
    cout << endl;
    return;
@@ -54,6 +56,14 @@ int main(int argc, char* argv[]){
    double mt=0, mt_err=0;
    double kmbl=0, kmbl_err=0;
    double k220=0, k220_err=0;
+   double kmaos220=0, kmaos220_err=0;
+   double kmaos210=0, kmaos210_err=0;
+   bool distcut220 = 0;
+   bool etadisamb220 = 0;
+   bool blmatch220 = 0;
+   bool distcut210 = 0;
+   bool etadisamb210 = 0;
+   bool blmatch210 = 0;
    double mcmass=0;
    double fitchi2=0;
    double tsig_mbl_chi2 [8] = {0};
@@ -68,6 +78,16 @@ int main(int argc, char* argv[]){
    tree->Branch("kbml_err", &kmbl_err);
    tree->Branch("k220", &k220);
    tree->Branch("k220_err", &k220_err);
+   tree->Branch("kmaos220", &kmaos220);
+   tree->Branch("kmaos220_err", &kmaos220_err);
+   tree->Branch("kmaos210", &kmaos210);
+   tree->Branch("kmaos210_err", &kmaos210_err);
+   tree->Branch("distcut220", &distcut220);
+   tree->Branch("etadisamb220", &etadisamb220);
+   tree->Branch("blmatch220", &blmatch220);
+   tree->Branch("distcut210", &distcut210);
+   tree->Branch("etadisamb210", &etadisamb210);
+   tree->Branch("blmatch210", &blmatch210);
    tree->Branch("mcmass", &mcmass);
    tree->Branch("fitchi2", &fitchi2);
    tree->Branch("tsig_mbl_chi2", tsig_mbl_chi2, "tsig_mbl_chi2[8]/D");
@@ -84,7 +104,11 @@ int main(int argc, char* argv[]){
    int do_templates = 0;
    int do_learnparams = 0;
    int do_mbl = 0;
-   int do_mt2 = 0;
+   int do_mt2_220 = 0;
+   int do_maos220 = 0;
+   int do_maos210 = 0;
+   int maoscuts220 = 0;
+   int maoscuts210 = 0;
    double fracevts = -1;
 
    struct option longopts[] = {
@@ -102,12 +126,18 @@ int main(int argc, char* argv[]){
       // This instructs the code to not use mbl in the fit.
       // The same goes for each other kinematic variable.
       { "mbl",          no_argument,         &do_mbl,          'b' },
-      { "mt2",          no_argument,         &do_mt2,          't' },
+      { "mt2_220",      no_argument,         &do_mt2_220,      't' },
+      { "maos220",      no_argument,         &do_maos220,      '2' },
+      { "maos210",      no_argument,         &do_maos210,      '1' },
+      { "maoscuts220",  required_argument,   0,                'y' },
+      { "maoscuts210",  required_argument,   0,                'z' },
+      // maoscuts220 and maoscuts210 set which cuts to use for maos220 and maos 210 respectively.
+      // see lines 237-251 for what number to input.
       { "help",         no_argument,         NULL,             'h' },
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdexahponbtm:c:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdexahponbt21yzm:c:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -155,7 +185,23 @@ int main(int argc, char* argv[]){
             break;
 
          case 't' :
-            do_mt2 = true;
+            do_mt2_220 = true;
+            break;
+
+         case '2' :
+            do_maos220 = true;
+            break;
+
+         case '1' :
+            do_maos210 = true;
+            break;
+
+         case 'y' :
+            maoscuts220 = atoi(optarg);
+            break;
+
+         case 'z' :
+            maoscuts210 = atoi(optarg);
             break;
 
          case 'h' :
@@ -181,12 +227,35 @@ int main(int argc, char* argv[]){
       }
    }
 
+   fitter.InitializeDists();
+
    fitter.dists["mbl"].activate = do_mbl;
-   fitter.dists["mt2_220_nomatchmbl"].activate = do_mt2;
+   fitter.dists["mt2_220_nomatchmbl"].activate = do_mt2_220;
+   fitter.dists["maos220blv"].activate = do_maos220;
+   fitter.dists["maos210blv"].activate = do_maos210;
+
+   if (maoscuts220 == 1){ distcut220 = 1; }
+   else if (maoscuts220 == 2){ etadisamb220 = 1; }
+   else if (maoscuts220 == 3){distcut220 = 1; etadisamb220 = 1; }
+   else if (maoscuts220 == 4){blmatch220 = 1; }
+   else if (maoscuts220 == 5){distcut220 = 1; blmatch220 = 1; }
+   else if (maoscuts220 == 6){etadisamb220 = 1; blmatch220 = 1; }
+   else if (maoscuts220 == 7){distcut220 = 1; etadisamb220 = 1; blmatch220 = 1; }
+
+   if (maoscuts210 == 1){ distcut210 = 1; } 
+   else if (maoscuts210 == 2){ etadisamb210 = 1; }
+   else if (maoscuts210 == 3){distcut210 = 1; etadisamb210 = 1; }
+   else if (maoscuts210 == 4){blmatch210 = 1; }
+   else if (maoscuts210 == 5){distcut210 = 1; blmatch210 = 1; } 
+   else if (maoscuts210 == 6){etadisamb210 = 1; blmatch210 = 1; }
+   else if (maoscuts210 == 7){distcut210 = 1; etadisamb210 = 1; blmatch210 = 1; }
+   
+   fitter.maoscuts220 = maoscuts220;
+   fitter.maoscuts210 = maoscuts210;
 
    // Check that at least one kinematic variable's lengthscale has been entered.
    // Any additional distributions need to be added here
-   if (!(fitter.dists["mbl"].activate) and !(fitter.dists["mt2_220_nomatchmbl"].activate) and do_fit == 1){
+   if (!(fitter.dists["mbl"].activate) and !(fitter.dists["mt2_220_nomatchmbl"].activate) and !(fitter.dists["maos220blv"].activate) and !(fitter.dists["maos210blv"].activate) and (do_fit == 1 or do_templates == 1) ){
       std::cout << "At least one variable needed to do fit.  Input at least one lengthscale." << std::endl;
       print_usage();
       return -1;
@@ -441,7 +510,7 @@ int main(int argc, char* argv[]){
                double m2llsig, m2llbkg;
 
                if( dist->activate ){
-                  Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
+                  Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2, dist->range );
                   fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
 
                   dist->aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
@@ -485,6 +554,10 @@ int main(int argc, char* argv[]){
             kmbl_err = par_err[1];
             k220 = par[2];
             k220_err = par_err[2];
+            kmaos220 = par[3];
+            kmaos220_err = par_err[3];
+            kmaos210 = par[4];
+            kmaos210_err = par_err[4]; 
             fitchi2 = fitter.fitchi2;
 
             tree->Fill();
@@ -511,7 +584,7 @@ int main(int argc, char* argv[]){
                double m2llsig, m2llbkg;
 
                if( dist->activate ){
-                  Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
+                  Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2, dist->range );
                   fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
 
                   dist->aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );
@@ -541,7 +614,7 @@ int main(int argc, char* argv[]){
    if( do_learnparams ){
       string name = "mbl";
       Distribution *dist = &(fitter.dists[name]);
-      Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2 );
+      Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2, dist->range );
       fptr->LearnGPparams( hists_train_ );
       delete fptr;
    }

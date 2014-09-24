@@ -304,7 +304,7 @@ int main(int argc, char* argv[]){
                   "RealData", eventvec_train, 0, randseed, -1 );
          }else{
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 1, randseed, -1 );
+                  "RealData", eventvec_train, 1, 0, -1 );
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
                   "RealData", eventvec_test, 2, randseed, fracevts );
          }

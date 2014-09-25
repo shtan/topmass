@@ -29,9 +29,9 @@ void print_usage(){
    cout << setw(25) << "\t-o --bootstrap" << "Turn on bootstrapping.\n";
    cout << setw(25) << "\t-c --fracevts" << "Fit fraction of events.\n";
    cout << setw(25) << "\t-b --mbl" << "Activate Mbl distribution.\n";
-   cout << setw(25) << "\t-2 --mt2_220" << "Activate MT2 220 distribution.\n";
-   cout << setw(25) << "\t-1 --maos220" << "Activate MAOS 220 distribution.\n";
-   cout << setw(25) << "\t-t --maos210" << "Activate MAOS 210 distribution.\n";
+   cout << setw(25) << "\t-t --mt2_220" << "Activate MT2 220 distribution.\n";
+   cout << setw(25) << "\t-2 --maos220" << "Activate MAOS 220 distribution.\n";
+   cout << setw(25) << "\t-1 --maos210" << "Activate MAOS 210 distribution.\n";
    cout << setw(25) << "\t-h --help" << "Display this menu.\n";
    cout << endl;
    return;

@@ -73,9 +73,16 @@ void Fitter::InitializeDists(){
 
 void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 
+   // check machine location
+   char hostname[1024];
+   gethostname(hostname, 1024);
+   char *pch;
+   pch = strstr( hostname, "lpc" );
+
    // file path
-   string path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140730/";
-   //string path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20140730/";
+   string path;
+   if( pch != NULL ) path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140730/";
+   if( pch == NULL ) path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20140730/";
 
    // filenames
    datasets[ "data" ]      = Dataset( path, "ntuple_data.root" );
@@ -373,9 +380,6 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
 
    gMinuit = new ROOT::Minuit2::Minuit2Minimizer ( ROOT::Minuit2::kMigrad );
-   // TODO
-   //gMinuit->SetTolerance(0.001);
-   gMinuit->SetTolerance(1.0);
    gMinuit->SetPrintLevel(3);
 
    // Dimension of fFunc needs to be changed if adding more variables

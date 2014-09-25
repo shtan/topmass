@@ -28,6 +28,8 @@ void print_usage(){
    cout << setw(25) << "\t-m --masspnt  <value>" << "If running on mc, use masspoint indicated.\n";
    cout << setw(25) << "\t-o --bootstrap" << "Turn on bootstrapping.\n";
    cout << setw(25) << "\t-c --fracevts" << "Fit fraction of events.\n";
+   cout << setw(25) << "\t-s --numPE" << "Number of PEs for stat error validation.\n";
+   cout << setw(25) << "\t-i --PE" << "PE index (out of numPE total).\n";
    cout << setw(25) << "\t-b --mbl" << "Activate Mbl distribution.\n";
    cout << setw(25) << "\t-t --mt2_220" << "Activate MT2 220 distribution.\n";
    cout << setw(25) << "\t-2 --maos220" << "Activate MAOS 220 distribution.\n";
@@ -113,6 +115,8 @@ int main(int argc, char* argv[]){
    int maoscuts220 = 0;
    int maoscuts210 = 0;
    double fracevts = -1;
+   int statval_numPE = -1;
+   int statval_PE = -1;
 
    struct option longopts[] = {
       { "run_number",   required_argument,   0,                'n' },
@@ -125,9 +129,8 @@ int main(int argc, char* argv[]){
       { "masspnt",      required_argument,   0,                'm' },
       { "bootstrap",    no_argument,         &do_bootstrap,    'o' },
       { "fracevts",     required_argument,   0,                'c' },
-      // If the lmbl flag is not entered, lengthscale_mbl has default value -1.
-      // This instructs the code to not use mbl in the fit.
-      // The same goes for each other kinematic variable.
+      { "numPE",        required_argument,   0,                's' },
+      { "PE",           required_argument,   0,                'i' },
       { "mbl",          no_argument,         &do_mbl,          'b' },
       { "mt2_220",      no_argument,         &do_mt2_220,      't' },
       { "maos220",      no_argument,         &do_maos220,      '2' },
@@ -140,7 +143,7 @@ int main(int argc, char* argv[]){
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdexahponbt21yzm:c:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdexahponbt21yzm:c:s:i:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -181,6 +184,14 @@ int main(int argc, char* argv[]){
 
          case 'c' :
             fracevts = atof(optarg);
+            break;
+
+         case 's' :
+            statval_numPE = atoi(optarg);
+            break;
+
+         case 'i' :
+            statval_PE = atoi(optarg);
             break;
 
          case 'b' :
@@ -301,12 +312,12 @@ int main(int argc, char* argv[]){
 
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 0, randseed, -1 );
+                  "RealData", eventvec_train, 0, randseed, -1, -1, -1 );
          }else{
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 1, 0, -1 );
+                  "RealData", eventvec_train, 1, 0, -1, -1, -1 );
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_test, 2, randseed, fracevts );
+                  "RealData", eventvec_test, 2, randseed, fracevts, statval_numPE, statval_PE );
          }
 
       }
@@ -624,7 +635,6 @@ int main(int argc, char* argv[]){
       
       double m2llsig, m2llbkg;
       Shapes * fptr = new Shapes( name, dist->glx, dist->glmt, dist->gnorm1, dist->gnorm2, dist->range );
-      fptr->LearnGPparams( hists_train_ );
       fptr->TrainGP( hists_train_, m2llsig, m2llbkg );
       
       dist->aGPsig.ResizeTo( fptr->aGPsig.GetNoElements() );

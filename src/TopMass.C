@@ -139,7 +139,8 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 }
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
-      string selection, vector<Event>& eventvec, int opt, int randseed, double fracevts ){
+      string selection, vector<Event>& eventvec, int opt, int randseed, double fracevts,
+      int statval_numPE, int statval_PE ){
    
    // declare variables
    TLorentzVector *jet1 = new TLorentzVector();
@@ -195,6 +196,12 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    if( opt == 2 ){
       start = treesize/2;
       end = treesize;
+   }
+   if( statval_numPE != -1 ){
+      int nevts = end-start;
+      int begin = start;
+      start = begin + statval_PE*nevts/statval_numPE;
+      end = begin + (statval_PE+1)*nevts/statval_numPE;
    }
 
    // temp

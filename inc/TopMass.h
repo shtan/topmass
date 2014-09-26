@@ -158,10 +158,10 @@ struct Distribution {
    string title;
    bool activate;
 
-   double glx;
-   double glmt;
    double gnorm1;
    double gnorm2;
+   double glx;
+   double glmt;
 
    TMatrixD Ainv_sig;
    TMatrixD Ainv_bkg;
@@ -173,8 +173,8 @@ struct Distribution {
    double rbnd;
    double range;
 
-   Distribution( string n="", string t="", double lx=1.0, double lmt=1.0, double n1=1.0, double n2=1.0, double r=300 )
-      : name(n), title(t), glx(lx), glmt(lmt), gnorm1(n1), gnorm2(n2), range(r) {
+   Distribution( string n="", string t="", double n1=1.0, double n2=1.0, double lx=1.0, double lmt=1.0, double r=300 )
+      : name(n), title(t), gnorm1(n1), gnorm2(n2), glx(lx), glmt(lmt), range(r) {
          lbnd = 0;
          rbnd = 0;
          activate = false;

@@ -60,10 +60,10 @@ Fitter::~Fitter(){
 void Fitter::InitializeDists(){
    // gaussian process length scales
 
-   dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 13.0, 18.0, 1.5, 12.0, 300 );
-   dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 13.0, 18.0, 1.5, 12.0, 300 );
-   dists[ "maos220blv" ] = Distribution( "maos220blv","blv mass from Maos neutrinos from M_{T2} 220", 13.0, 15.0, 1.5, 12.0, 500 );
-   dists[ "maos210blv" ] = Distribution( "maos210blv","blv mass from Maos neutrinos from M_{T2} 210", 13.0, 15.0, 1.5, 12.0, 500 );
+   dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 1.5, 12.0, 13.0, 18.0, 300 );
+   dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 1.5, 12.0, 13.0, 18.0, 300 );
+   dists[ "maos220blv" ] = Distribution( "maos220blv","blv mass from Maos neutrinos from M_{T2} 220", 1.5, 12.0, 13.0, 15.0, 500 );
+   dists[ "maos210blv" ] = Distribution( "maos210blv","blv mass from Maos neutrinos from M_{T2} 210", 1.5, 12.0, 13.0, 15.0, 500 );
 
 }
 

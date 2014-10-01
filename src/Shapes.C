@@ -293,11 +293,12 @@ void Shapes::LearnGPparams( map< string, map<string, TH1D*> > & hists_ ){
    gMinuit->SetFunction( *fFunc );
 
    do_gpvar = true;
-   gMinuit->SetLowerLimitedVariable(0, "gpnorm1", 10.0, 0.1, 0.0);
-   gMinuit->SetLowerLimitedVariable(1, "gpnorm2", 10.0, 0.1, 0.0);
-   gMinuit->SetLowerLimitedVariable(2, "lx", 20, 1, 0.0);
-   gMinuit->SetLowerLimitedVariable(3, "lmass", 20, 1, 0.0);
+   gMinuit->SetLowerLimitedVariable(0, "gpnorm1", 10, 1, 0.0);
+   gMinuit->SetLowerLimitedVariable(1, "gpnorm2", 10, 1, 0.0);
+   gMinuit->SetLowerLimitedVariable(2, "lx", 10, 1, 0.0);
+   gMinuit->SetLowerLimitedVariable(3, "lmass", 10, 1, 0.0);
 
+   gMinuit->SetTolerance(1);
    gMinuit->Minimize();
 
    const double *xs = gMinuit->X();

@@ -58,12 +58,12 @@ Fitter::~Fitter(){
 }
 
 void Fitter::InitializeDists(){
-   // gaussian process length scales
 
-   dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 1.5, 12.0, 13.0, 18.0, 300 );
-   dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 1.5, 12.0, 13.0, 18.0, 300 );
-   dists[ "maos220blv" ] = Distribution( "maos220blv","blv mass from Maos neutrinos from M_{T2} 220", 1.5, 12.0, 13.0, 15.0, 500 );
-   dists[ "maos210blv" ] = Distribution( "maos210blv","blv mass from Maos neutrinos from M_{T2} 210", 1.5, 12.0, 13.0, 15.0, 500 );
+   // gaussian process length scales
+   dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 4.2, 10.9, 13.0, 26.0, 300 );
+   dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 5.7, 7.9, 9.5, 15.2, 300 );
+   dists[ "maos220blv" ] = Distribution( "maos220blv","blv mass from Maos neutrinos from M_{T2} 220", 1.6, 6.1, 19.3, 17.7, 500 );
+   dists[ "maos210blv" ] = Distribution( "maos210blv","blv mass from Maos neutrinos from M_{T2} 210", 0.56, 7.8, 19.2, 19.6, 500 );
 
 }
 
@@ -191,11 +191,11 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    int end = treesize;
    if( opt == 1 ){
       start = 0;
-      end = treesize/2;
+      end = treesize/3;
    }
    if( opt == 2 ){
-      start = treesize/2;
-      end = treesize;
+      start = treesize/3;
+      end = 2*treesize/3;
    }
    if( statval_numPE != -1 ){
       int nevts = end-start;

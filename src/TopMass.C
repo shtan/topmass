@@ -491,9 +491,11 @@ double Fitter::Min2LL(const double *x){
                }
             }
             else if ( name.compare("mt2_220_nomatchmbl") == 0 ){ // for 220
+               bool matchmbl = false;
                for ( unsigned int j=0; j < ev->mbls.size(); j++){
-                  if ( ev->mbls[j] == ev->mt2_220 ) continue;
+                  if ( ev->mbls[j] == ev->mt2_220 ) matchmbl = true;
                }
+               if( matchmbl ) continue;
                if( ev->mt2_220 > dist->range ) continue;
                //if( ev->mt2_220 > lbnd and ev->mt2_220 < rbnd ) continue;
                double val = shape.Ftot( &(ev->mt2_220), pfit );

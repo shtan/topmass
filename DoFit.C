@@ -34,6 +34,7 @@ void print_usage(){
    cout << setw(25) << "\t-t --mt2_220" << "Activate MT2 220 distribution.\n";
    cout << setw(25) << "\t-2 --maos220" << "Activate MAOS 220 distribution.\n";
    cout << setw(25) << "\t-1 --maos210" << "Activate MAOS 210 distribution.\n";
+   cout << setw(25) << "\t-9 --syst <string>" << "Run with a systematic variation.\n";
    cout << setw(25) << "\t-h --help" << "Display this menu.\n";
    cout << endl;
    return;
@@ -73,6 +74,7 @@ int main(int argc, char* argv[]){
    double fitchi2=0;
    double tsig_mbl_chi2 [8] = {0};
    double tbkg_mbl_chi2 [8] = {0};
+   string nsyst = "";
    
    TTree *tree = new TTree("FitResults", "FitResults");
    tree->Branch("runNumber", &run_number);
@@ -97,6 +99,7 @@ int main(int argc, char* argv[]){
    tree->Branch("fitchi2", &fitchi2);
    tree->Branch("tsig_mbl_chi2", tsig_mbl_chi2, "tsig_mbl_chi2[8]/D");
    tree->Branch("tbkg_mbl_chi2", tbkg_mbl_chi2, "tbkg_mbl_chi2[8]/D");
+   tree->Branch("syst", &nsyst);
 
 
    // option flags
@@ -139,11 +142,12 @@ int main(int argc, char* argv[]){
       { "maoscuts210",  required_argument,   0,                'z' },
       // maoscuts220 and maoscuts210 set which cuts to use for maos220 and maos 210 respectively.
       // see lines 237-251 for what number to input.
+      { "syst",         required_argument,   0,                '9' },
       { "help",         no_argument,         NULL,             'h' },
       { 0, 0, 0, 0 }
    };
 
-   while( (c = getopt_long(argc, argv, "fdexahponbt21yzm:c:s:i:", longopts, NULL)) != -1 ) {
+   while( (c = getopt_long(argc, argv, "fdexahponbt21yzm:c:s:i:9:", longopts, NULL)) != -1 ) {
       switch(c)
       {
          case 'n' :
@@ -216,6 +220,10 @@ int main(int argc, char* argv[]){
 
          case 'z' :
             maoscuts210 = atoi(optarg);
+            break;
+
+         case '9' :
+            nsyst = optarg;
             break;
 
          case 'h' :
@@ -292,11 +300,28 @@ int main(int argc, char* argv[]){
 
       // turn off data
       if( !use_data and name.compare("data") == 0 ) continue;
+      // don't load systematics files yet
+      if( name.find("syst") != string::npos ) continue;
+
+      string tsyst = "Central";
+      // if a jes systematic is specified, change to the appropriate ttree
+      if( !nsyst.empty() and nsyst.find("MC") == string::npos ) tsyst = nsyst;
 
       datacount[name] = 0;
 
+      string file_train = dat->file;
+      string file_test = dat->file;
+
+      // if a HAD systematic is specified, swap the appropriate ntuple into the test set
+      if( nsyst.find("MC") != string::npos and name.find("ttbar172") != string::npos ){
+         string nametemp = nsyst;
+         nametemp.erase(0,2);
+         file_test = "ntuple_TTJets_"+nametemp;
+         cout << "---> swapping sytematics file " << file_test << " for 172.5 masspoint." << endl;
+      }
+
       TFile file( (dat->path+dat->file).c_str() );
-      TTree *trees = (TTree*)file.Get("RealData");
+      TTree *trees = (TTree*)file.Get(tsyst.c_str());
 
       cout << setiosflags(ios::left);
       cout << "... " << setw(25) << name
@@ -304,7 +329,7 @@ int main(int argc, char* argv[]){
 
       if( do_diagnostics ){
          fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-               "RealData", eventvec_datamc, 0, 0, -1 );
+               tsyst.c_str(), eventvec_datamc, 0, 0, -1 );
       }
 
       // events for training and testing
@@ -312,12 +337,12 @@ int main(int argc, char* argv[]){
 
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 0, randseed, -1, -1, -1 );
+                  "Central", eventvec_train, 0, randseed, -1, -1, -1 );
          }else{
-            fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_train, 1, 0, -1, -1, -1 );
-            fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "RealData", eventvec_test, 2, randseed, fracevts, statval_numPE, statval_PE );
+            fitter.ReadNtuple( dat->path+file_train, name, dat->mc_xsec/dat->mc_nevts,
+                  tsyst.c_str(), eventvec_train, 0, 0, -1, -1, -1 );
+            fitter.ReadNtuple( dat->path+file_test, name, dat->mc_xsec/dat->mc_nevts,
+                  "Central", eventvec_test, 0, randseed, fracevts, statval_numPE, statval_PE );
          }
 
       }
@@ -344,7 +369,6 @@ int main(int argc, char* argv[]){
    if( do_fit ){
 
       vector<Event> eventvec_fit;
-      vector<Event> eventvec_fit_bkgcontrol;
       map< string, map<string, TH1D*> > hists_fit_;
       map< string, map<string, TH2D*> > hists2d_fit_;
 
@@ -482,11 +506,7 @@ int main(int argc, char* argv[]){
             // load events to be fitted
             for(vector<Event>::iterator ev = eventvec_test.begin(); ev < eventvec_test.end(); ev++){
                if( ev->type.find(dname) != string::npos or ev->type.find("other") != string::npos ){
-                  if( ev->type.find("bkgcontrol") == string::npos ){
-                     eventvec_fit.push_back(*ev);
-                  }else{
-                     eventvec_fit_bkgcontrol.push_back(*ev);
-                  }
+                  eventvec_fit.push_back(*ev);
                }
             }
 
@@ -494,13 +514,6 @@ int main(int argc, char* argv[]){
 
             // flag events to be fitted
             for( vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){
-               ev->fit_event = true;
-               for(map<string, int>::iterator it = datacount.begin(); it != datacount.end(); it++){
-                  if( ev->process.compare(it->first) == 0 ) datacount[it->first]+=1;
-               }
-            }
-            for( vector<Event>::iterator ev = eventvec_fit_bkgcontrol.begin();
-                  ev < eventvec_fit_bkgcontrol.end(); ev++){
                ev->fit_event = true;
                for(map<string, int>::iterator it = datacount.begin(); it != datacount.end(); it++){
                   if( ev->process.compare(it->first) == 0 ) datacount[it->first]+=1;
@@ -576,7 +589,6 @@ int main(int argc, char* argv[]){
             fitchi2 = fitter.fitchi2;
 
             eventvec_fit.clear();
-            eventvec_fit_bkgcontrol.clear();
             fitter.DeleteHists( hists_fit_, hists2d_fit_ );
          }
 

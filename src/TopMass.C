@@ -60,10 +60,10 @@ Fitter::~Fitter(){
 void Fitter::InitializeDists(){
 
    // gaussian process length scales
-   dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 4.2, 10.9, 13.0, 26.0, 300 );
-   dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 5.7, 7.9, 9.5, 15.2, 300 );
-   dists[ "maos220blv" ] = Distribution( "maos220blv","blv mass from Maos neutrinos from M_{T2} 220", 1.6, 6.1, 19.3, 17.7, 500 );
-   dists[ "maos210blv" ] = Distribution( "maos210blv","blv mass from Maos neutrinos from M_{T2} 210", 0.56, 7.8, 19.2, 19.6, 500 );
+   dists[ "mbl" ] = Distribution( "mbl", "M_{bl}", 5.8, 10.7, 11.8, 26.1, 300 );
+   dists[ "mt2_220_nomatchmbl" ] = Distribution( "mt2_220_nomatchmbl", "M_{T2} 220", 3.9, 8.4, 8.5, 12.5, 300 );
+   dists[ "maos220blv" ] = Distribution( "maos220blv","blv mass from Maos neutrinos from M_{T2} 220", 1.6, 6.4, 19.2, 19.2, 500 );
+   dists[ "maos210blv" ] = Distribution( "maos210blv","blv mass from Maos neutrinos from M_{T2} 210", 0.60, 8.5, 19.1, 18.9, 500 );
 
 }
 
@@ -81,8 +81,8 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 
    // file path
    string path;
-   if( pch != NULL ) path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20140730/";
-   if( pch == NULL ) path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20140730/";
+   if( pch != NULL ) path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20141030/";
+   if( pch == NULL ) path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20141030/";
 
    // filenames
    datasets[ "data" ]      = Dataset( path, "ntuple_data.root" );
@@ -101,6 +101,10 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
    datasets[ "ttbar175" ]  = Dataset( path, "ntuple_TTJets_mass175_5.root" ); 
    datasets[ "ttbar178" ]  = Dataset( path, "ntuple_TTJets_mass178_5.root" ); 
    datasets[ "ttbar181" ]  = Dataset( path, "ntuple_TTJets_mass181_5.root" ); 
+   datasets[ "ttbarsyst_scaleup" ]        = Dataset( path, "ntuple_TTJets_scaleup.root" );
+   datasets[ "ttbarsyst_scaledown" ]      = Dataset( path, "ntuple_TTJets_scaledown.root" );
+   datasets[ "ttbarsyst_matchingup" ]     = Dataset( path, "ntuple_TTJets_matchingup.root" );
+   datasets[ "ttbarsyst_matchingdown" ]   = Dataset( path, "ntuple_TTJets_matchingdown.root" );
 
    // for mc weights
    datasets[ "dy" ].mc_nevts         = 30459503;
@@ -118,6 +122,10 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
    datasets[ "ttbar175" ].mc_nevts   = 5186494;
    datasets[ "ttbar178" ].mc_nevts   = 4733483;
    datasets[ "ttbar181" ].mc_nevts   = 5145140;
+   datasets[ "ttbarsyst_scaleup" ].mc_nevts        = 5009488;
+   datasets[ "ttbarsyst_scaledown" ].mc_nevts      = 5387181;
+   datasets[ "ttbarsyst_matchingup" ].mc_nevts     = 5415010;
+   datasets[ "ttbarsyst_matchingdown" ].mc_nevts   = 5476728;
 
    datasets[ "dy" ].mc_xsec          = 3351.97;
    datasets[ "ww" ].mc_xsec          = 54.838;
@@ -134,6 +142,10 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
    datasets[ "ttbar175" ].mc_xsec    = 234;
    datasets[ "ttbar178" ].mc_xsec    = 234;
    datasets[ "ttbar181" ].mc_xsec    = 234;
+   datasets[ "ttbarsyst_scaleup" ].mc_xsec         = 234;
+   datasets[ "ttbarsyst_scaledown" ].mc_xsec       = 234;
+   datasets[ "ttbarsyst_matchingup" ].mc_xsec      = 234;
+   datasets[ "ttbarsyst_matchingdown" ].mc_xsec    = 234;
 
    return;
 }
@@ -156,13 +168,14 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    float puMyWeight = 1.0;
 
    // open ntuple
+   cout << "reading " << path << endl;
    TFile file( path.c_str() );
    TTree *tree = (TTree*)file.Get(selection.c_str());
 
    tree->SetBranchAddress("jet1FourVector", &jet1);
    tree->SetBranchAddress("jet2FourVector", &jet2);
-   tree->SetBranchAddress("lepton1FourVector", &lep1);
-   tree->SetBranchAddress("lepton2FourVector", &lep2);
+   tree->SetBranchAddress("lep1FourVector", &lep1);
+   tree->SetBranchAddress("lep2FourVector", &lep2);
    tree->SetBranchAddress("metFourVector", &met);
    tree->SetBranchAddress("jet1PtResolution", &jet1PtRes);
    tree->SetBranchAddress("jet1PhiResolution", &jet1PhiRes);

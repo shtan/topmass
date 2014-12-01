@@ -457,10 +457,10 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
    cout << "\nFitting " << eventvec_fit->size() << " events." << endl;
    gMinuit->Minimize();
-   cout << "\nComputing Hessian." << endl;
+   //cout << "\nComputing Hessian." << endl;
    //gMinuit->Hesse();
    double emtLow=0, emtUp=0;
-   //gMinuit->GetMinosError(0,emtLow,emtUp);
+   gMinuit->GetMinosError(0,emtLow,emtUp);
    cout << "MINOS ERROR: -" << emtLow << " +" << emtUp << endl;
 
    return;
@@ -511,7 +511,6 @@ double Fitter::Min2LL(const double *x){
 
             // B MASS CUT
             if ( !(ev->jet1.M() < 40 and ev->jet2.M() < 40) ) continue;
-            if( ev->jet1.Pt() < 35 or ev->jet2.Pt() < 35 ) continue;
 
             if ( name.compare("mbl") == 0 ){ // for mbl
                for( unsigned int j=0; j < ev->mbls.size(); j++ ){

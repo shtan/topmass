@@ -2,6 +2,7 @@
 #include "TTree.h"
 #include "TFile.h"
 #include "TF1.h"
+#include "TCanvas.h"
 
 #include <vector>
 #include <iostream>
@@ -316,7 +317,7 @@ int main(int argc, char* argv[]){
       if( nsyst.find("MC") != string::npos and name.find("ttbar172") != string::npos ){
          string nametemp = nsyst;
          nametemp.erase(0,2);
-         file_test = "ntuple_TTJets_"+nametemp;
+         file_test = "ntuple_TTJets_"+nametemp+".root";
          cout << "---> swapping sytematics file " << file_test << " for 172.5 masspoint." << endl;
       }
 
@@ -329,7 +330,7 @@ int main(int argc, char* argv[]){
 
       if( do_diagnostics ){
          fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-               tsyst.c_str(), eventvec_datamc, 0, 0, -1 );
+               tsyst.c_str(), eventvec_datamc, 0, -1, -1, -1 );
       }
 
       // events for training and testing
@@ -337,12 +338,12 @@ int main(int argc, char* argv[]){
 
          if( use_data ){ // train on full mc set
             fitter.ReadNtuple( dat->path+dat->file, name, dat->mc_xsec/dat->mc_nevts,
-                  "Central", eventvec_train, 0, randseed, -1, -1, -1 );
+                  "Central", eventvec_train, 0, -1, -1, -1 );
          }else{
             fitter.ReadNtuple( dat->path+file_train, name, dat->mc_xsec/dat->mc_nevts,
-                  tsyst.c_str(), eventvec_train, 0, 0, -1, -1, -1 );
+                  tsyst.c_str(), eventvec_train, 0, -1, -1, -1 );
             fitter.ReadNtuple( dat->path+file_test, name, dat->mc_xsec/dat->mc_nevts,
-                  "Central", eventvec_test, 0, randseed, fracevts, statval_numPE, statval_PE );
+                  "Central", eventvec_test, 0, fracevts, statval_numPE, statval_PE );
          }
 
       }
@@ -351,8 +352,37 @@ int main(int argc, char* argv[]){
 
    // data/mc plots, kinematic distributions
    fitter.GetVariables( eventvec_datamc );
+   
    fitter.GetVariables( eventvec_train );
    fitter.GetVariables( eventvec_test );
+
+   // TODO
+   /*
+   TH1D *hmbl_train = new TH1D("hmbl_train","hmbl_train",100,0,300);
+   for(unsigned int i=0; i < eventvec_train.size(); i++){
+      if( eventvec_train[i].type.find("ttbar172") != string::npos){
+         for( unsigned int j=0; j < eventvec_train[i].mbls.size(); j++ ){
+            hmbl_train->Fill( eventvec_train[i].mbls[j] );
+         }
+      }
+   }
+   TH1D *hmbl_test = new TH1D("hmbl_test","hmbl_test",100,0,300);
+   for(unsigned int i=0; i < eventvec_test.size(); i++){
+      if( eventvec_test[i].type.find("ttbar172") != string::npos){
+         for( unsigned int j=0; j < eventvec_test[i].mbls.size(); j++ ){
+            hmbl_test->Fill( eventvec_test[i].mbls[j] );
+         }
+      }
+   }
+
+   TCanvas *canvas = new TCanvas("canvas","canvas",800,800);
+   hmbl_train->SetLineColor(2);
+   hmbl_train->Draw();
+   hmbl_test->Draw("same");
+   canvas->Print("test.root");
+   return 0;
+   */
+   
 
    fitter.DeclareHists( hists_train_, hists2d_train_, "train" );
    fitter.FillHists( hists_train_, hists2d_train_, eventvec_train );
@@ -511,6 +541,9 @@ int main(int argc, char* argv[]){
             }
 
             fitter.ReweightMC( eventvec_fit, dname );
+            //if( do_bootstrap ){
+            //   fitter.Resample( eventvec_fit, randseed );
+            //}
 
             // flag events to be fitted
             for( vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){

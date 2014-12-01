@@ -39,10 +39,21 @@ syst[13]=MCscaleup
 syst[14]=MCscaledown
 syst[15]=MCmatchingup
 syst[16]=MCmatchingdown
+syst[17]=JetEnergyResolutionUP
+syst[18]=JetEnergyResolutionDN
+syst[19]=METUnclusteredUP
+syst[20]=METUnclusteredDN
+syst[21]=PileUpUP
+syst[22]=PileUpDN
+syst[23]=ElectronEnergyScaleUP
+syst[24]=ElectronEnergyScaleDN
+syst[25]=MuonMomentumScaleUP
+syst[26]=MuonMomentumScaleDN
+syst[27]=PtTopReweightingUP
 
 job=$(($1-1))
 
-./DoFit --syst ${syst[$job]} --fit --masspnt 172.5 --mbl --mt2 --maos220 --maos210
+./DoFit --syst ${syst[$job]} --fit --masspnt 172.5 --mt2_220
 
 cd ..
 mv topmass/fitresults.root .

@@ -82,7 +82,7 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
    // file path
    string path;
    if( pch != NULL ) path = "root://cmseos:1094//eos/uscms/store/user/nmirman/Ntuples/TopMass/20141030/";
-   if( pch == NULL ) path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20141030/";
+   if( pch == NULL ) path = "/afs/cern.ch/work/n/nmirman/public/Ntuples/TopMass/20141125/";
 
    // filenames
    datasets[ "data" ]      = Dataset( path, "ntuple_data.root" );
@@ -151,7 +151,7 @@ void Fitter::LoadDatasets( map<string, Dataset>& datasets ){
 }
 
 void Fitter::ReadNtuple( string path, string process, double mcweight, 
-      string selection, vector<Event>& eventvec, int opt, int randseed, double fracevts,
+      string selection, vector<Event>& eventvec, int opt, double fracevts,
       int statval_numPE, int statval_PE ){
    
    // declare variables
@@ -168,7 +168,6 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
    float puMyWeight = 1.0;
 
    // open ntuple
-   cout << "reading " << path << endl;
    TFile file( path.c_str() );
    TTree *tree = (TTree*)file.Get(selection.c_str());
 
@@ -217,32 +216,13 @@ void Fitter::ReadNtuple( string path, string process, double mcweight,
       end = begin + (statval_PE+1)*nevts/statval_numPE;
    }
 
-   // temp
-   TRandom3 *rand = new TRandom3(randseed);
-   int numevents = end-start;
-   vector<int> eventlist;
-
-   if( randseed == 0 ){
-      for(int i=start; i < end; i++){
-         eventlist.push_back(i);
-      }
-   }else{
-      for(int i=0; i < numevents; i++){
-         eventlist.push_back( start+rand->Integer(end-start) );
-      }
-   }
-
    // run on fraction of total events
    if( fracevts != -1 ){
-      eventlist.erase( eventlist.end()-floor(numevents*(1-fracevts)), eventlist.end() );
+      end = start + fracevts*(end-start);
    }
 
-   sort( eventlist.begin(), eventlist.end() );
-
    // fill event vector
-   for(unsigned int i=0; i < eventlist.size(); i++){
-      int ev = eventlist[i];
-
+   for(int ev=start; ev < end; ev++){
       tree->GetEntry(ev);
 
       Event evtemp;
@@ -396,6 +376,49 @@ void Fitter::ReweightMC( vector<Event>& eventvec, string name ){
 
 }
 
+void Fitter::Resample( vector<Event>& eventvec, int randseed ){
+   cout << "Resampling events." << endl;
+
+   // put resampled events into a new vector
+   vector<Event> eventvec_resampled;
+
+   // initialize random number engine
+   TRandom3 *rand = new TRandom3(randseed);
+
+   double maxweight = 0;
+   for(vector<Event>::iterator ev = eventvec.begin(); ev < eventvec.end(); ev++){
+      if( ev->weight > maxweight ) maxweight = ev->weight;
+   }
+
+   int numevts_data = 49243;
+   // resample with replacement, taking into account event weights
+   int count = 0;
+   cout << __LINE__ << endl;
+   while( count < numevts_data ){
+      // get event
+      int ev = rand->Uniform( eventvec.size() );
+      // if event weight is large enough, take event
+      if( rand->Rndm() < eventvec[ev].weight/maxweight ){
+   cout << __LINE__ << endl;
+         Event temp = eventvec[ev];
+   cout << __LINE__ << endl;
+         eventvec_resampled.push_back( temp );
+   cout << __LINE__ << endl;
+      }
+   }
+   cout << __LINE__ << endl;
+
+   // set all event weights to unity
+   for(vector<Event>::iterator ev = eventvec_resampled.begin(); ev < eventvec_resampled.end(); ev++){
+      ev->weight = 1.0;
+   }
+
+   // replace eventvec with new vector
+   cout << __LINE__ << endl;
+   eventvec = eventvec_resampled;
+   cout << __LINE__ << endl;
+}
+
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
 
 
@@ -405,7 +428,8 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    // Dimension of fFunc needs to be changed if adding more variables
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 5 );
    gMinuit->SetFunction( *fFunc );
-   gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
+   // TODO
+   gMinuit->SetVariable(0, "topMass", 165.0, 0.1);
 
    // If we're fitting mbl, set mbl background as a limited variable, otherwise set it as a fixed variable
    if (dists["mbl"].activate){
@@ -441,9 +465,9 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    cout << "\nFitting " << eventvec_fit->size() << " events." << endl;
    gMinuit->Minimize();
    cout << "\nComputing Hessian." << endl;
-   gMinuit->Hesse();
+   //gMinuit->Hesse();
    double emtLow=0, emtUp=0;
-   gMinuit->GetMinosError(0,emtLow,emtUp);
+   //gMinuit->GetMinosError(0,emtLow,emtUp);
    cout << "MINOS ERROR: -" << emtLow << " +" << emtUp << endl;
 
    return;
@@ -494,6 +518,7 @@ double Fitter::Min2LL(const double *x){
 
             // B MASS CUT
             if ( !(ev->jet1.M() < 40 and ev->jet2.M() < 40) ) continue;
+            if( ev->jet1.Pt() < 35 or ev->jet2.Pt() < 35 ) continue;
 
             if ( name.compare("mbl") == 0 ){ // for mbl
                for( unsigned int j=0; j < ev->mbls.size(); j++ ){
@@ -516,7 +541,7 @@ double Fitter::Min2LL(const double *x){
             }
             else if ( name.compare("maos220blv") == 0 ){ // for Maos 220
                double blv220array [] = { ev->maos220_blvmass1ap, ev->maos220_blvmass1am, ev->maos220_blvmass2ap, ev->maos220_blvmass2am, ev->maos220_blvmass1bp, ev->maos220_blvmass1bm, ev->maos220_blvmass2bp, ev->maos220_blvmass2bm };
-               
+
                vector<bool> useMaos220 = MaosCut220( ev );
                for ( unsigned int j=0; j < sizeof(blv220array)/sizeof(blv220array[0]); j++){           
                   if( blv220array[j] > dist->range ) continue;
@@ -525,12 +550,12 @@ double Fitter::Min2LL(const double *x){
                      double val = shape.Ftot( &(blv220array[j]), pfit );
                      m2ll -= 2.0*ev->weight*log( val );
                   }
-               
+
                }
             }
             else if ( name.compare("maos210blv") == 0 ){ // for Maos 210
                double blv210array [] = { ev->maos210_blvmass1ap, ev->maos210_blvmass1am, ev->maos210_blvmass2ap, ev->maos210_blvmass2am, ev->maos210_blvmass1bp, ev->maos210_blvmass1bm, ev->maos210_blvmass2bp, ev->maos210_blvmass2bm };
-               
+
                vector<bool> useMaos210 = MaosCut210( ev );
                for ( unsigned int j=0; j < sizeof(blv210array)/sizeof(blv210array[0]); j++){           
                   if( blv210array[j] > dist->range ) continue;
@@ -539,7 +564,7 @@ double Fitter::Min2LL(const double *x){
                      double val = shape.Ftot( &(blv210array[j]), pfit );
                      m2ll -= 2.0*ev->weight*log( val );
                   }
-               
+
                }
             }
 
@@ -697,10 +722,10 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
             double mt_rrange = xmin[0]+3*xerr[0];
             double kmbl_lrange = xmin1s[iparam]-3*xerr1s[iparam];
             double kmbl_rrange = xmin1s[iparam]+3*xerr1s[iparam];
-   
+
             // mt profile
             TGraph *gLmt = new TGraph();
-   
+
             for(unsigned int k=0; k <= npnts_mt; k++){
                cout << "mt profile, pnt " << k << endl;
                double mt = mt_lrange + (mt_rrange-mt_lrange)*k/npnts_mt;
@@ -715,10 +740,10 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
                const double par [] = {mt, xmin1s[iparam], 1.0, integralsigk, integralbkgk};
                gLmt->SetPoint(k, mt, Min2LL(par) - minvalue);
             }
-   
+
             // kvariable profile
             TGraph *gLkmbl = new TGraph();
-   
+
             for(unsigned int k=0; k <= npnts_kmbl; k++){
                cout << "kmbl profile, pnt " << k << endl;
                double kmbl = kmbl_lrange + (kmbl_rrange-kmbl_lrange)*k/npnts_kmbl;
@@ -729,12 +754,12 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
                ftemplate->SetParameters( xmin[0], 0.0, 1.0, 1.0, 1.0 );
                double integralbkgk = ftemplate->Integral(0,dist->range);
                ftemplate->SetParameters( xmin[0], kmbl, 1.0, integralsigk, integralbkgk );
-      
+
                const double par [] = {xmin[0], kmbl, 1.0, integralsigk, integralbkgk};
                gLkmbl->SetPoint(k, kmbl, Min2LL(par) - minvalue);
             }
 
-   
+
             // kmbl vs mt
             TH2D *hLmbl = new TH2D("hLmbl", "hLmbl", npnts_mt, mt_lrange, mt_rrange,
                   npnts_kmbl, kmbl_lrange, kmbl_rrange);
@@ -762,7 +787,7 @@ void Fitter::PlotResults( map< string, map<string, TH1D*> >& hists_ ){
             gLkmbl->SetMarkerStyle(20);
             gLkmbl->Draw("ACP");
             cLkmbl->Write("cLkmbl");
-         
+
             TCanvas *cLmbl = new TCanvas( ("cLmbl_"+dist->name).c_str(), ("cLmbl_"+dist->name).c_str(), 800, 800);
             cLmbl->cd();
             hLmbl->Draw("colz");

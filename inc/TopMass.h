@@ -190,10 +190,11 @@ class Fitter{
       ~Fitter();
 
       void InitializeDists();
-      void ReadNtuple(string, string, double, string, vector<Event>&, int=0, int=0, double=-1, int=-1, int=-1);
+      void ReadNtuple(string, string, double, string, vector<Event>&, int, double, int, int);
       void LoadDatasets(map<string, Dataset>&);
       void GetVariables(vector<Event>&);
       void ReweightMC(vector<Event>&, string);
+      void Resample(vector<Event>&, int);
 
       void RunMinimizer(vector<Event>&);
       void PlotResults(map< string, map<string, TH1D*> >&);

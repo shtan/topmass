@@ -203,6 +203,7 @@ void Fitter::FillHists( map< string, map<string, TH1D*> >& hists_, map< string, 
 
       // B MASS CUT
       if ( !(jet1.M() < 40 and jet2.M() < 40) ) continue;
+      if( ev->jet1.Pt() < 35 or ev->jet2.Pt() < 35 ) continue;
 
       if (sin((jet1).DeltaPhi(up221))*sin((jet2).DeltaPhi(up221)) > 0){
          hists_["mt2_221"][type]->Fill( ev->mt2_221, ev->weight );

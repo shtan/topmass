@@ -393,20 +393,16 @@ void Fitter::Resample( vector<Event>& eventvec, int randseed ){
    int numevts_data = 49243;
    // resample with replacement, taking into account event weights
    int count = 0;
-   cout << __LINE__ << endl;
    while( count < numevts_data ){
       // get event
       int ev = rand->Uniform( eventvec.size() );
       // if event weight is large enough, take event
       if( rand->Rndm() < eventvec[ev].weight/maxweight ){
-   cout << __LINE__ << endl;
          Event temp = eventvec[ev];
-   cout << __LINE__ << endl;
          eventvec_resampled.push_back( temp );
-   cout << __LINE__ << endl;
+         count++;
       }
    }
-   cout << __LINE__ << endl;
 
    // set all event weights to unity
    for(vector<Event>::iterator ev = eventvec_resampled.begin(); ev < eventvec_resampled.end(); ev++){
@@ -414,9 +410,7 @@ void Fitter::Resample( vector<Event>& eventvec, int randseed ){
    }
 
    // replace eventvec with new vector
-   cout << __LINE__ << endl;
    eventvec = eventvec_resampled;
-   cout << __LINE__ << endl;
 }
 
 void Fitter::RunMinimizer( vector<Event>& eventvec ){
@@ -428,8 +422,7 @@ void Fitter::RunMinimizer( vector<Event>& eventvec ){
    // Dimension of fFunc needs to be changed if adding more variables
    fFunc = new ROOT::Math::Functor ( this, &Fitter::Min2LL, 5 );
    gMinuit->SetFunction( *fFunc );
-   // TODO
-   gMinuit->SetVariable(0, "topMass", 165.0, 0.1);
+   gMinuit->SetVariable(0, "topMass", 175.0, 0.1);
 
    // If we're fitting mbl, set mbl background as a limited variable, otherwise set it as a fixed variable
    if (dists["mbl"].activate){

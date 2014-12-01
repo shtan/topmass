@@ -541,9 +541,9 @@ int main(int argc, char* argv[]){
             }
 
             fitter.ReweightMC( eventvec_fit, dname );
-            //if( do_bootstrap ){
-            //   fitter.Resample( eventvec_fit, randseed );
-            //}
+            if( do_bootstrap ){
+               fitter.Resample( eventvec_fit, randseed );
+            }
 
             // flag events to be fitted
             for( vector<Event>::iterator ev = eventvec_fit.begin(); ev < eventvec_fit.end(); ev++){

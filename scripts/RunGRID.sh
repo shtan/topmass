@@ -27,7 +27,14 @@ mass=(161.5 163.5 166.5 169.5 172.5 175.5 178.5 181.5)
 job=$(($1-1))
 iter=$(($job/50))
 
-./DoFit --run_number $job --bootstrap --fit --masspnt ${mass[$iter]} --mbl
+penum=$(($job/100))
+
+echo $1
+echo $job
+echo $iter
+
+
+./DoFit --run_number $job --bootstrap --fit --mt2_220 --masspnt ${mass[4]}
 
 cd ..
 mv topmass/fitresults.root .

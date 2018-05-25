@@ -74,10 +74,14 @@ int main(int argc, char* argv[]){
    double fitchi2=0;
    double tsig_mbl_chi2 [8] = {0};
    double tbkg_mbl_chi2 [8] = {0};
+   int statval_numPE = -1;
+   int statval_PE = -1;
    string nsyst = "";
    
    TTree *tree = new TTree("FitResults", "FitResults");
    tree->Branch("runNumber", &run_number);
+   tree->Branch("numPE", &statval_numPE);
+   tree->Branch("indexPE", &statval_PE);
    tree->Branch("fitStatus", &fitstatus);
    tree->Branch("mt", &mt);
    tree->Branch("mt_err", &mt_err);
@@ -118,8 +122,8 @@ int main(int argc, char* argv[]){
    int maoscuts220 = 0;
    int maoscuts210 = 0;
    double fracevts = -1;
-   int statval_numPE = -1;
-   int statval_PE = -1;
+   //int statval_numPE = -1;
+   //int statval_PE = -1;
 
    struct option longopts[] = {
       { "run_number",   required_argument,   0,                'n' },

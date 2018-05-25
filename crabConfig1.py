@@ -12,7 +12,7 @@ datasetpath=none
 
 pset=none
 
-number_of_jobs=200
+number_of_jobs=2
 events_per_job=1
 
 ### used to define random numbers
